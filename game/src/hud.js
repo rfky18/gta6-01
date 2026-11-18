@@ -1,14 +1,23 @@
 // HUD: every DOM overlay — mission panel, wanted stars, money, police
 // response list, health/armour, dialog box, speedometer, radio — plus the
 // circular minimap canvas drawn from live world positions.
+//
+// v2: five weapon slots (fists + 4 guns, live mag/reserve), procedural
+// character portraits in the dialog box, mission counter N/8 with a real
+// stage progress bar, the full police response list (VIPER-4, VIPER-7,
+// HAWK-1), a purple minimap route to the mission marker, and a crosshair
+// with a hitmarker for on-foot combat.
 import { GAME, WORLD, districtAt } from './config.js';
+import { portraitDataURI } from './portraits.js';
 
 export function createHud() {
   const el = (id) => document.getElementById(id);
+  const chapterEl = el('mission-chapter');
   const missionTitle = el('mission-title');
   const missionObjective = el('mission-objective');
   const missionStage = el('mission-stage-label');
-  const missionNext = el('mission-next');
+  const missionStageFill = el('mission-stage-fill');
+  const missionNext = el('mission-next-text');
   const moneyEl = el('hud-money');
   const wantedEl = el('hud-wanted');
   const clockEl = el('hud-clock');
@@ -23,15 +32,21 @@ export function createHud() {
   const radioEl = el('hud-radio');
   const policeList = el('police-list');
   const policePanel = el('police-panel');
+  const policeCount = el('police-count');
   const dialogBox = el('dialog-box');
+  const dialogPortrait = el('dialog-portrait-img');
   const dialogName = el('dialog-name');
   const dialogText = el('dialog-text');
   const bannerEl = el('hud-banner');
   const minimap = el('minimap');
   const mctx = minimap.getContext('2d');
   const interactEl = el('hud-interact');
+  const weaponSlotsEl = el('weapon-slots');
+  const crosshairEl = el('crosshair');
+  const hitmarkEl = el('hitmarker');
   let dialogTimer = 0;
   let bannerTimer = 0;
+  let hitTimer = 0;
 
   function stars(n) {
     let out = '';
@@ -41,10 +56,12 @@ export function createHud() {
 
   function update(info) {
     const m = info.mission;
-    missionTitle.textContent = `MISSION 1/1 — ${m.title}`;
+    chapterEl.textContent = `${m.chapter} · ${m.giver ? m.giver.toUpperCase() : ''}`;
+    missionTitle.textContent = `MISSION ${m.index + 1}/${m.total} — ${m.title}`;
     missionObjective.textContent = m.objective;
-    missionStage.textContent = info.missionDone ? 'COMPLETE' : `STAGE ${Math.min(info.missionStage + 1, 2)}/2`;
-    missionNext.textContent = `NEXT  ${m.next}`;
+    missionStage.textContent = m.total && m.index >= m.total ? 'COMPLETE' : `STAGE ${Math.min(m.stage + 1, m.stages)}/${m.stages}`;
+    if (missionStageFill) missionStageFill.style.width = `${Math.round((m.progress || 0) * 100)}%`;
+    missionNext.textContent = m.next;
     moneyEl.textContent = `$${info.money.toLocaleString('en-US')}`;
     wantedEl.textContent = stars(info.wanted);
     wantedEl.className = info.wanted > 0 ? 'wanted hot' : 'wanted';
@@ -58,15 +75,36 @@ export function createHud() {
     vehicleEl.textContent = info.vehicle;
     conditionEl.style.width = `${Math.max(0, info.condition)}%`;
     radioEl.textContent = `${GAME.radioStation} — ${GAME.radioTrack}`;
+    // Weapon slots: 0 fists + 4 guns, live ammo, active slot highlighted.
+    if (info.weapons && weaponSlotsEl) {
+      let html = '';
+      for (let i = 0; i < info.weapons.length; i += 1) {
+        const w = info.weapons[i];
+        const ammo = Number.isFinite(w.mag) ? `${w.mag}/${w.reserve}` : '∞';
+        html += `<div class="weapon-slot${w.active ? ' active' : ''}"><span class="wkey">${i}</span><span class="wname">${w.short}</span><span class="wammo">${ammo}${w.reloading ? ' · RELOADING' : ''}</span></div>`;
+      }
+      weaponSlotsEl.innerHTML = html;
+    }
+    // Police response: every live unit + the helicopter.
     if (info.wanted > 0) {
       policePanel.style.display = 'block';
-      policeList.innerHTML =
-        `<div class="police-row"><span class="callsign">VIPER-4</span><span>${Math.round(info.policeDistance)} m</span><span class="state">${info.policeMode}</span></div>` +
-        `<div class="police-row dim"><span class="callsign">HAWK-1 · AIR</span><span>—</span><span class="state">SPOTLIGHT</span></div>`;
+      const units = info.policeUnits && info.policeUnits.length ? info.policeUnits : [{ callsign: 'VIPER-4', distance: info.policeDistance, mode: info.policeMode }];
+      if (policeCount) policeCount.textContent = `${units.length + 1} UNITS · CODE ${info.wanted}`;
+      let html = '';
+      for (const u of units) {
+        html += `<div class="police-row"><span class="callsign">${u.callsign}</span><span>${Math.round(u.distance)} m</span><span class="state">${u.mode}</span></div>`;
+      }
+      html += '<div class="police-row dim"><span class="callsign">HAWK-1 · AIR</span><span>—</span><span class="state">SPOTLIGHT</span></div>';
+      policeList.innerHTML = html;
     } else {
       policePanel.style.display = 'none';
     }
     interactEl.style.display = info.showInteract ? 'block' : 'none';
+    if (crosshairEl) crosshairEl.style.display = info.showCrosshair ? 'block' : 'none';
+    if (hitTimer > 0) {
+      hitTimer -= info.dt;
+      if (hitTimer <= 0 && hitmarkEl) hitmarkEl.style.display = 'none';
+    }
     if (dialogTimer > 0) {
       dialogTimer -= info.dt;
       if (dialogTimer <= 0) dialogBox.style.display = 'none';
@@ -118,8 +156,16 @@ export function createHud() {
       mctx.arc(cx + x * scale, cy + z * scale, size, 0, Math.PI * 2);
       mctx.fill();
     };
-    // Mission marker (yellow diamond).
+    // Purple route line from the player to the mission marker.
     if (info.missionSpot) {
+      mctx.strokeStyle = '#b45eff';
+      mctx.lineWidth = 3;
+      mctx.setLineDash([6, 4]);
+      mctx.beginPath();
+      mctx.moveTo(cx + info.x * scale, cy + info.z * scale);
+      mctx.lineTo(cx + info.missionSpot.x * scale, cy + info.missionSpot.z * scale);
+      mctx.stroke();
+      mctx.setLineDash([]);
       mctx.fillStyle = '#ffd23e';
       mctx.save();
       mctx.translate(cx + info.missionSpot.x * scale, cy + info.missionSpot.z * scale);
@@ -127,8 +173,9 @@ export function createHud() {
       mctx.fillRect(-5, -5, 10, 10);
       mctx.restore();
     }
-    // Police (red/blue), traffic (grey), player (white arrow).
+    // Police (red/blue), enemies (orange), traffic (grey), player (white arrow).
     dot(info.policeX, info.policeZ, '#ff3e3e', 4);
+    if (info.enemies) for (const e of info.enemies) dot(e.x, e.z, '#ff8a3e', 3.5);
     for (const t of info.traffic) dot(t.x, t.z, '#9aa0ad', 2.5);
     mctx.save();
     mctx.translate(cx + info.x * scale, cy + info.z * scale);
@@ -151,6 +198,10 @@ export function createHud() {
   function say(speaker, text, seconds) {
     dialogName.textContent = speaker;
     dialogText.textContent = text;
+    if (dialogPortrait) {
+      dialogPortrait.src = portraitDataURI(speaker);
+      dialogPortrait.alt = `${speaker} portrait`;
+    }
     dialogBox.style.display = 'flex';
     dialogTimer = seconds || 6;
   }
@@ -161,5 +212,11 @@ export function createHud() {
     bannerTimer = seconds || 3;
   }
 
-  return { update, say, banner };
+  function hitmark() {
+    if (!hitmarkEl) return;
+    hitmarkEl.style.display = 'block';
+    hitTimer = 0.25;
+  }
+
+  return { update, say, banner, hitmark };
 }

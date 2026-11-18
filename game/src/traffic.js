@@ -1,11 +1,13 @@
 // Traffic: simple AI cars that loop around city blocks on the road grid.
 // They brake for the player's car ahead of them and keep the streets alive.
+// v2: 12 cars (was 8) with varied speeds, and they also brake for a
+// pursuing police car so chases do not plough through a frozen street.
 import { WORLD } from './config.js';
 import { buildCarMesh } from './vehicles.js';
 import { createRandom, pick, range } from './random.js';
 
 const THREE = window.THREE;
-const COLORS = [0xf2c94c, 0x7fb3d5, 0x9b7fb8, 0x5fb8a6, 0xd9d9d9, 0x3a7d5e, 0xc96a3a, 0x8a9bb0];
+const COLORS = [0xf2c94c, 0x7fb3d5, 0x9b7fb8, 0x5fb8a6, 0xd9d9d9, 0x3a7d5e, 0xc96a3a, 0x8a9bb0, 0x2e6f8e, 0xe86a92];
 
 export function createTraffic(scene, seed, count) {
   const rng = createRandom(seed + 77);
@@ -36,14 +38,25 @@ export function createTraffic(scene, seed, count) {
       wp: 0,
       x: start.x + range(rng, -2, 2),
       z: start.z + range(rng, -2, 2),
-      speed: range(rng, 7, 11),
+      speed: range(rng, 7, 12),
       baseSpeed: 0,
       heading: 0,
     });
     cars[i].baseSpeed = cars[i].speed;
   }
 
-  function update(dt, playerCarPos) {
+  function brakingFor(car, threat) {
+    if (!threat) return false;
+    const pdx = threat.x - car.x;
+    const pdz = threat.z - car.z;
+    const pd = Math.hypot(pdx, pdz);
+    const ahead = (Math.sin(car.heading) * pdx + Math.cos(car.heading) * pdz) / (pd || 1);
+    return pd < 9 && ahead > 0.5;
+  }
+
+  // update(dt, playerCarPos, policePos): policePos is optional; traffic
+  // brakes for whichever threat is right ahead of it.
+  function update(dt, playerCarPos, policePos) {
     for (const car of cars) {
       const target = car.loop[car.wp];
       const dx = target.x - car.x;
@@ -58,15 +71,9 @@ export function createTraffic(scene, seed, count) {
       while (diff > Math.PI) diff -= Math.PI * 2;
       while (diff < -Math.PI) diff += Math.PI * 2;
       car.heading += Math.max(-1.6 * dt, Math.min(1.6 * dt, diff));
-      // Brake if the player's car is right ahead.
+      // Brake if the player's car (or a police car) is right ahead.
       let speed = car.baseSpeed;
-      if (playerCarPos) {
-        const pdx = playerCarPos.x - car.x;
-        const pdz = playerCarPos.z - car.z;
-        const pd = Math.hypot(pdx, pdz);
-        const ahead = (Math.sin(car.heading) * pdx + Math.cos(car.heading) * pdz) / (pd || 1);
-        if (pd < 9 && ahead > 0.5) speed = 0;
-      }
+      if (brakingFor(car, playerCarPos) || brakingFor(car, policePos)) speed = 0;
       car.speed += (speed - car.speed) * Math.min(1, dt * 2);
       car.x += Math.sin(car.heading) * car.speed * dt;
       car.z += Math.cos(car.heading) * car.speed * dt;

@@ -12,6 +12,9 @@ const args = process.argv.slice(2);
 const portIndex = args.indexOf('--port');
 const requested = portIndex === -1 ? 8080 : Number(args[portIndex + 1]);
 const port = Number.isInteger(requested) && requested > 0 && requested < 65536 ? requested : 8080;
+// v2: the server reports its entry version on startup so a screenshot run
+// can be matched to the build that served it.
+const SERVER_VERSION = 'v2';
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -68,5 +71,5 @@ createServer((request, response) => {
   });
   createReadStream(file).pipe(response);
 }).listen(port, '127.0.0.1', () => {
-  console.log(`game/ is on http://localhost:${port}`);
+  console.log(`game/ is on http://localhost:${port} (NEON DISTRICT ${SERVER_VERSION})`);
 });

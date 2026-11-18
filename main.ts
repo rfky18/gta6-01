@@ -25,6 +25,9 @@ if (existsSync(join(here, 'screenshots'))) cpSync(join(here, 'screenshots'), joi
 // scorer would refuse (more than 4 screenshots or one over 256 KiB; more than 993 files in game/ or 48 MiB of game
 // files, in all, or a path under game/ over 1000 bytes: game/ counts beside /output's own 1000-entry cap, its
 // screenshots/ and dossier.json).
+// v2 entry: 8 story missions, 4 guns + combat AI, procedural character
+// portraits, time-of-day lighting and the wet-sunset Ocean Boulevard cover.
+const ENTRY_VERSION = 'v2 — 8 missions, combat, portraits, time-of-day';
 writeFileSync(
   join(out, 'dossier.json'),
   buildDossier(out, {

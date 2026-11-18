@@ -1,5 +1,7 @@
 // Pedestrians: low-poly walkers on the sidewalks. They stroll along the
 // sidewalk lines, bob as they walk, and step aside when a car gets close.
+// v2: gunfire panics them — walkers near a shot turn and run away from it
+// for a few seconds, so a firefight visibly empties the street.
 import { WORLD } from './config.js';
 import { createRandom, pick, range } from './random.js';
 
@@ -53,14 +55,34 @@ export function createPedestrians(scene, seed, count) {
       pos: range(rng, -200, 200),
       dir: rng() < 0.5 ? -1 : 1,
       speed: range(rng, 1.1, 2.1),
+      baseSpeed: 0,
       phase: rng() * 6,
       dodge: 0,
+      panic: 0,
     });
+    walkers[i].baseSpeed = walkers[i].speed;
+  }
+
+  // Gunfire at (x, z): walkers within 26 m run away from it.
+  function panicAt(x, z) {
+    for (const w of walkers) {
+      const wx = w.horizontal ? w.pos : w.lane;
+      const wz = w.horizontal ? w.lane : w.pos;
+      const d = Math.hypot(wx - x, wz - z);
+      if (d < 26) {
+        w.panic = 3;
+        // Run away along the sidewalk: flip direction if it points at the shot.
+        const away = w.horizontal ? Math.sign(wx - x) || 1 : Math.sign(wz - z) || 1;
+        w.dir = away;
+      }
+    }
   }
 
   function update(dt, threat) {
     for (const w of walkers) {
-      w.pos += w.dir * w.speed * dt;
+      const speed = w.panic > 0 ? w.baseSpeed * 2.6 : w.baseSpeed;
+      if (w.panic > 0) w.panic -= dt;
+      w.pos += w.dir * speed * dt;
       if (w.pos > 205) {
         w.pos = 205;
         w.dir = -1;
@@ -79,7 +101,7 @@ export function createPedestrians(scene, seed, count) {
         }
       }
       if (w.dodge > 0) w.dodge -= dt;
-      w.phase += dt * w.speed * 4;
+      w.phase += dt * speed * 4;
       const swing = Math.sin(w.phase) * 0.45;
       w.mesh.legL.rotation.x = swing;
       w.mesh.legR.rotation.x = -swing;
@@ -88,5 +110,5 @@ export function createPedestrians(scene, seed, count) {
     }
   }
 
-  return { walkers, update };
+  return { walkers, update, panicAt };
 }

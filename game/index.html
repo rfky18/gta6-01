@@ -16,7 +16,7 @@
   #mission-title { font-size: 19px; font-weight: 800; margin: 2px 0 4px; }
   #mission-objective { font-size: 14px; line-height: 1.35; color: #e8e4f0; }
   #mission-stage { margin-top: 7px; height: 8px; background: #33364a; border-radius: 4px; overflow: hidden; font-size: 0; position: relative; }
-  #mission-stage::after { content: ""; display: block; height: 100%; width: 50%; background: #ffd23e; }
+  #mission-stage-fill { display: block; height: 100%; width: 0%; background: #ffd23e; }
   #mission-stage-label { position: absolute; right: 0; top: -15px; font-size: 11px; font-weight: 700; color: #ffd23e; }
   #mission-next { margin-top: 6px; font-size: 12px; color: #9be8ff; }
   #mission-next b { color: #ffd23e; }
@@ -34,8 +34,20 @@
   #hud-money { font-size: 34px; font-weight: 900; color: #37ff8a; text-shadow: 0 2px 8px rgba(0,0,0,0.6); line-height: 1.05; }
   .wanted { font-size: 26px; letter-spacing: 3px; color: #8b93a3; text-shadow: 0 2px 6px rgba(0,0,0,0.6); }
   .wanted.hot { color: #ffd23e; }
-  #weapon-slot { margin-top: 6px; display: inline-block; padding: 6px 12px; font-size: 13px; font-weight: 700; }
-  #weapon-slot b { color: #ffd23e; }
+  #weapon-slots { margin-top: 6px; display: flex; gap: 5px; justify-content: flex-end; }
+  .weapon-slot { background: rgba(12,10,26,0.82); border: 1px solid rgba(255,255,255,0.25); border-radius: 6px; padding: 4px 8px; font-size: 11px; font-weight: 700; color: #cfd3de; text-align: center; min-width: 52px; }
+  .weapon-slot.active { border-color: #ffd23e; color: #fff; box-shadow: 0 0 10px rgba(255,210,62,0.5); }
+  .weapon-slot .wkey { color: #ffd23e; margin-right: 4px; }
+  .weapon-slot .wammo { display: block; color: #9be8ff; font-size: 10px; }
+  /* Crosshair + hitmarker, centre screen, on foot while armed */
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; display: none; }
+  #crosshair::before, #crosshair::after { content: ""; position: absolute; background: rgba(255,255,255,0.9); box-shadow: 0 0 4px #000; }
+  #crosshair::before { left: 10px; top: 0; width: 2px; height: 22px; }
+  #crosshair::after { left: 0; top: 10px; width: 22px; height: 2px; }
+  #hitmarker { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; display: none; }
+  #hitmarker::before, #hitmarker::after { content: ""; position: absolute; left: 14px; top: 0; width: 2px; height: 30px; background: #ffd23e; box-shadow: 0 0 6px #000; }
+  #hitmarker::before { transform: rotate(45deg); }
+  #hitmarker::after { transform: rotate(-45deg); }
   /* Minimap, bottom-left */
   #minimap-wrap { position: absolute; left: 14px; bottom: 14px; width: 200px; text-align: center; }
   #minimap { border-radius: 50%; border: 3px solid rgba(255, 210, 62, 0.8); box-shadow: 0 4px 18px rgba(0,0,0,0.55); background: #23262e; }
@@ -58,7 +70,7 @@
   #hud-radio { margin-top: 6px; font-size: 12px; font-weight: 700; color: #ff8ad2; text-shadow: 0 1px 4px #000; }
   /* Dialog, bottom-centre */
   #dialog-box { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); width: 520px; max-width: 46vw; padding: 10px 14px; display: none; align-items: flex-start; gap: 12px; }
-  #dialog-portrait { width: 52px; height: 52px; flex: none; border-radius: 8px; background: linear-gradient(135deg, #ff2e88, #7a2eff); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 900; color: #fff; }
+  #dialog-portrait-img { width: 52px; height: 52px; flex: none; border-radius: 8px; border: 2px solid rgba(255, 210, 62, 0.6); background: #1a0b2e; }
   #dialog-name { color: #ff8ad2; font-weight: 800; font-size: 14px; }
   #dialog-text { font-size: 14px; line-height: 1.4; color: #f2f1f5; }
   /* Interact prompt + banner */
@@ -84,21 +96,21 @@
 
 <div id="hud">
   <div id="mission-panel" class="panel">
-    <div class="chapter">CH 1 · FIRST NIGHT</div>
-    <div id="mission-title">MISSION 1/1 — FIRST NIGHT</div>
+    <div class="chapter" id="mission-chapter">CH 1 · NADIA CRUZ</div>
+    <div id="mission-title">MISSION 1/8 — FIRST NIGHT</div>
     <div id="mission-objective">Ride to Palmera Pier — Nadia left a package there.</div>
-    <div id="mission-stage"><span id="mission-stage-label">STAGE 1/2</span></div>
+    <div id="mission-stage"><i id="mission-stage-fill"></i><span id="mission-stage-label">STAGE 1/2</span></div>
     <div id="mission-next"><b>NEXT</b> <span id="mission-next-text">Pick up the package</span></div>
   </div>
   <div id="police-panel" class="panel">
-    <h3>▸ SVPD RESPONSE <span>1 UNIT · CODE 1</span></h3>
+    <h3>▸ SVPD RESPONSE <span id="police-count">2 UNITS · CODE 1</span></h3>
     <div id="police-list"></div>
   </div>
   <div id="top-right">
     <div id="hud-clock">DAY 1 18:52</div>
     <div id="hud-money">$250</div>
     <div id="hud-wanted" class="wanted">☆☆☆☆☆</div>
-    <div id="weapon-slot" class="panel">FISTS <b>∞</b></div>
+    <div id="weapon-slots"></div>
   </div>
   <div id="minimap-wrap">
     <canvas id="minimap" width="200" height="200"></canvas>
@@ -117,9 +129,11 @@
     <div id="hud-radio">♪ NEON FM 101.3 — Sunset Static</div>
   </div>
   <div id="dialog-box" class="panel">
-    <div id="dialog-portrait">NC</div>
+    <img id="dialog-portrait-img" src="" alt="speaker portrait">
     <div><div id="dialog-name">Nadia Cruz</div><div id="dialog-text"></div></div>
   </div>
+  <div id="crosshair"></div>
+  <div id="hitmarker"></div>
   <div id="hud-interact"><b>[E]</b> <span id="interact-label">Enter vehicle</span></div>
   <div id="hud-banner"></div>
 </div>
@@ -128,9 +142,11 @@
   <h1>NEON DISTRICT<br><span>CITY OF CRIME</span></h1>
   <h2>San Vega City · one long sunset · one first night</h2>
   <p>Dario Cole just got out. Nadia Cruz has a package waiting at Palmera Pier and the whole
-  San Vega PD on speed dial. Walk the streets, steal a ride, lose the cops, bring the package home.</p>
+  San Vega PD on speed dial. Walk the streets, steal a ride, lose the cops, run eight story
+  jobs — and settle things with Marco Ferro at the harbour.</p>
   <div class="controls">
-    WASD move / drive · SHIFT sprint · SPACE jump / handbrake · Mouse camera · E enter car / pick up · P pause · R radio
+    WASD move / drive · SHIFT sprint · SPACE jump / handbrake · Mouse camera · E enter car / pick up ·<br>
+    1-4 weapons (0 fists) · Left-click fire · Right-click aim · R reload · T radio · P pause
   </div>
   <button id="btn-start">START ENGINE</button>
   <button id="btn-continue" class="secondary" style="display:none">CONTINUE</button>

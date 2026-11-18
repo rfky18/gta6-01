@@ -1,4 +1,7 @@
 // Save / load through localStorage. One job: persist the player's progress.
+// v2: also stores which story mission the player is on, the weapon the
+// player had out, and the ammo in every gun — so a reload resumes mid-story,
+// not back at FIRST NIGHT.
 import { GAME } from './config.js';
 
 export function loadSave() {
@@ -20,8 +23,13 @@ export function saveGame(state) {
       health: state.health,
       armour: state.armour,
       rep: state.rep,
+      missionIndex: state.missionIndex || 0,
       missionStage: state.missionStage,
       missionDone: state.missionDone,
+      missionAllDone: !!state.missionAllDone,
+      weaponSlot: state.weaponSlot || 0,
+      mags: state.mags || null,
+      reserves: state.reserves || null,
       player: { x: state.playerX, z: state.playerZ },
       car: { x: state.carX, z: state.carZ, heading: state.carHeading },
       savedAt: Date.now(),

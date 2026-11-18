@@ -21,3 +21,25 @@ export function range(rng, min, max) {
 export function rangeInt(rng, min, max) {
   return min + Math.floor(rng() * (max - min + 1));
 }
+
+// v2 — helpers the new systems use: shuffle a deck (enemy spawn order,
+// traffic colours), clamp a value into a range (health, ammo, camera pitch),
+// and a seeded yes/no roll (enemy cover-seeking, pedestrian panic).
+export function shuffle(rng, list) {
+  const out = list.slice();
+  for (let i = out.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rng() * (i + 1));
+    const tmp = out[i];
+    out[i] = out[j];
+    out[j] = tmp;
+  }
+  return out;
+}
+
+export function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+export function chance(rng, probability) {
+  return rng() < probability;
+}

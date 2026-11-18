@@ -1,6 +1,11 @@
 // Rendering only: WebGL renderer, golden-hour tone mapping, and the
 // third-person camera (orbit on foot, chase cam while driving).
+//
+// v2 camera: the yaw the player asks for is smoothed toward the actual
+// camera yaw (no jitter on small mouse moves), speed widens the FOV a touch
+// like a chase cam should, and shooting / rams add a short shake.
 import { PALETTE } from './config.js';
+import { clamp } from './random.js';
 
 const THREE = window.THREE;
 
@@ -19,9 +24,12 @@ export function createRender(canvas) {
 
   const cam = {
     yaw: 0.6,
+    targetYaw: 0.6,
     pitch: 0.24,
     distance: 8,
     targetDistance: 8,
+    trauma: 0,
+    baseFov: 62,
   };
 
   function resize() {
@@ -31,15 +39,36 @@ export function createRender(canvas) {
   }
   window.addEventListener('resize', resize);
 
+  // Short camera shake (gunfire, rams): trauma 0..1, decays each frame.
+  function shake(amount) {
+    cam.trauma = clamp(cam.trauma + amount, 0, 1);
+  }
+
   // look: {dx, dy} mouse deltas. target: {x, y, z} to follow. driving: chase cam.
   function update(dt, look, target, driving, speed01) {
-    cam.yaw -= look.dx * 0.0032;
-    cam.pitch = Math.max(0.06, Math.min(0.9, cam.pitch + look.dy * 0.0022));
-    cam.targetDistance = driving ? 7.5 + speed01 * 1.5 : 8;
+    cam.targetYaw -= look.dx * 0.0032;
+    cam.pitch = clamp(cam.pitch + look.dy * 0.0022, 0.06, 0.9);
+    // Smooth the yaw toward what the player asked for: fast enough to feel
+    // responsive, slow enough that small mouse jitter never shows.
+    let diff = cam.targetYaw - cam.yaw;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    cam.yaw += diff * Math.min(1, dt * 14);
+    cam.targetDistance = driving ? 6.5 + speed01 * 0.8 : 8;
     cam.distance += (cam.targetDistance - cam.distance) * Math.min(1, dt * 4);
+    // Speed widens the chase-cam FOV slightly; on foot it stays put.
+    const wantFov = cam.baseFov + (driving ? speed01 * 6 : 0);
+    if (Math.abs(camera.fov - wantFov) > 0.05) {
+      camera.fov += (wantFov - camera.fov) * Math.min(1, dt * 5);
+      camera.updateProjectionMatrix();
+    }
+    cam.trauma = Math.max(0, cam.trauma - dt * 1.8);
+    const sh = cam.trauma * cam.trauma * 0.35;
+    const shX = (Math.random() - 0.5) * sh;
+    const shY = (Math.random() - 0.5) * sh;
     const eye = {
-      x: target.x + Math.sin(cam.yaw) * Math.cos(cam.pitch) * cam.distance,
-      y: target.y + 1.6 + Math.sin(cam.pitch) * cam.distance,
+      x: target.x + Math.sin(cam.yaw) * Math.cos(cam.pitch) * cam.distance + shX,
+      y: target.y + 1.6 + Math.sin(cam.pitch) * cam.distance + shY,
       z: target.z + Math.cos(cam.yaw) * Math.cos(cam.pitch) * cam.distance,
     };
     camera.position.set(eye.x, eye.y, eye.z);
@@ -50,14 +79,23 @@ export function createRender(canvas) {
   // Snap the camera behind a heading (used when entering a car / staging shots).
   function snapBehind(heading, target, driving) {
     cam.yaw = heading + Math.PI;
+    cam.targetYaw = cam.yaw;
     cam.pitch = driving ? 0.22 : 0.3;
-    cam.distance = driving ? 7.5 : 8;
+    cam.distance = driving ? 6.5 : 8;
     update(1, { dx: 0, dy: 0 }, target, driving, 0);
+  }
+
+  // Aim direction: the unit vector the camera is looking along, used by the
+  // combat raycast so shots go where the crosshair points.
+  function aimDirection() {
+    const dir = new THREE.Vector3();
+    camera.getWorldDirection(dir);
+    return { x: dir.x, y: dir.y, z: dir.z };
   }
 
   function render() {
     renderer.render(scene, camera);
   }
 
-  return { renderer, scene, camera, cam, update, snapBehind, render, resize };
+  return { renderer, scene, camera, cam, update, snapBehind, render, resize, shake, aimDirection };
 }

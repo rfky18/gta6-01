@@ -1,5 +1,9 @@
 // Procedural WebAudio: engine hum, police siren, UI blips and a tiny synthwave
 // radio loop. No audio files — everything is synthesized, so it works offline.
+// v2: gunfire (per-weapon pitch), reload clicks, hit ticks, enemy-down and
+// explosion stingers for the combat missions. Also fixes the radio arpeggio
+// index in v1, which computed `(noteIndex / 2) | 0 % arp.length` — the `%`
+// bound to the 0, so the arp never advanced past its second note.
 export function createAudio() {
   let ctx = null;
   let engineOsc = null;
@@ -63,11 +67,35 @@ export function createAudio() {
     }
   }
 
+  // A short noise burst: the crack of a gunshot. freq shapes the weapon.
+  function noiseBurst(dur, vol, freq) {
+    if (!ensure() || !ctx) return;
+    try {
+      const len = Math.max(1, Math.floor(ctx.sampleRate * dur));
+      const buffer = ctx.createBuffer(1, len, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < len; i += 1) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = freq || 1800;
+      const gain = ctx.createGain();
+      gain.gain.value = vol || 0.16;
+      src.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      src.start();
+    } catch {
+      // Audio is best-effort.
+    }
+  }
+
   function radioStep() {
     if (!ctx || !radioOn) return;
     const bass = bassline[noteIndex % bassline.length];
     if (bass > 0) blip(bass, 0.22, 'triangle', 0.05);
-    if (noteIndex % 2 === 0) blip(arp[(noteIndex / 2) | 0 % arp.length] || 220, 0.12, 'sine', 0.02);
+    if (noteIndex % 2 === 0) blip(arp[((noteIndex / 2) | 0) % arp.length] || 220, 0.12, 'sine', 0.02);
     noteIndex += 1;
   }
 
@@ -100,12 +128,43 @@ export function createAudio() {
       blip(220, 0.4, 'sawtooth', 0.09);
       window.setTimeout(() => blip(165, 0.5, 'sawtooth', 0.09), 200);
     },
+    // v2 combat sounds. All guarded: headless / muted browsers just skip.
+    shot(freq) {
+      noiseBurst(0.12, 0.18, freq || 1200);
+      blip(freq || 880, 0.07, 'square', 0.06);
+    },
+    enemyShot() {
+      noiseBurst(0.1, 0.07, 900);
+    },
+    reload() {
+      blip(1200, 0.05, 'square', 0.07);
+      window.setTimeout(() => blip(900, 0.05, 'square', 0.07), 140);
+      window.setTimeout(() => blip(1500, 0.05, 'square', 0.07), 320);
+    },
+    click() {
+      blip(1600, 0.04, 'square', 0.05);
+    },
+    hit() {
+      blip(2400, 0.05, 'sine', 0.08);
+    },
+    enemyDown() {
+      blip(392, 0.15, 'triangle', 0.09);
+      window.setTimeout(() => blip(262, 0.25, 'triangle', 0.09), 130);
+    },
+    explosion() {
+      noiseBurst(0.5, 0.22, 500);
+      blip(98, 0.4, 'sawtooth', 0.1);
+    },
     toggleRadio() {
       radioOn = !radioOn;
       return radioOn;
     },
     radioOn() {
       return radioOn;
+    },
+    // Test hook: is the synth context alive? (Playwright checks this.)
+    alive() {
+      return !!ctx && ctx.state === 'running';
     },
   };
 }

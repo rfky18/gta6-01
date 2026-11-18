@@ -1,5 +1,7 @@
 // Third-person pedestrian: Dario Cole on foot. One job: walk / sprint / jump
 // with camera-relative movement, gravity, and building collision.
+// v2: when armed, Dario carries the current gun in his right hand and raises
+// it while aiming; getting hit makes him flinch so damage reads on screen.
 import { PLAYER } from './config.js';
 
 const THREE = window.THREE;
@@ -24,11 +26,18 @@ function buildCharacterMesh() {
   head.position.y = 1.78;
   const hat = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.12, 0.48), cap);
   hat.position.y = 2.02;
-  group.add(legL, legR, torso, armL, armR, head, hat);
+  // The gun: a dark box in the right hand, shown only while armed.
+  const gun = new THREE.Mesh(
+    new THREE.BoxGeometry(0.12, 0.16, 0.62),
+    new THREE.MeshLambertMaterial({ color: 0x14161c }),
+  );
+  gun.position.set(0.48, 0.82, 0.28);
+  gun.visible = false;
+  group.add(legL, legR, torso, armL, armR, head, hat, gun);
   group.traverse((m) => {
     if (m.isMesh) m.castShadow = true;
   });
-  return { group, legL, legR, armL, armR };
+  return { group, legL, legR, armL, armR, gun };
 }
 
 export function createPlayer(scene, world) {
@@ -43,6 +52,9 @@ export function createPlayer(scene, world) {
     grounded: true,
     speed: 0,
     walkPhase: 0,
+    armed: false,
+    aiming: false,
+    flinch: 0,
   };
 
   function place(x, z, heading) {
@@ -53,6 +65,18 @@ export function createPlayer(scene, world) {
     state.heading = heading || 0;
     mesh.group.position.set(x, 0, z);
     mesh.group.rotation.y = state.heading;
+  }
+
+  // Show / hide the gun in Dario's hand (slot 0 = fists, no gun).
+  function setArmed(armed, aiming) {
+    state.armed = !!armed;
+    state.aiming = !!aiming;
+    mesh.gun.visible = state.armed;
+  }
+
+  // A hit lands: tilt the body briefly so damage is visible.
+  function flinch() {
+    state.flinch = 0.35;
   }
 
   // move: {x strafe, y forward} camera-relative; camYaw = camera facing angle.
@@ -86,17 +110,28 @@ export function createPlayer(scene, world) {
     const fixed = world.resolveCollision(state.x, state.z, PLAYER.radius);
     state.x = Math.max(-238, Math.min(238, fixed.x));
     state.z = Math.max(-238, Math.min(238, fixed.z));
-    // Walk-cycle swing.
+    // Walk-cycle swing; aiming raises the right arm (and the gun) forward.
     state.walkPhase += dt * state.speed * 1.6;
     const swing = Math.sin(state.walkPhase) * Math.min(0.6, state.speed / 10);
     mesh.legL.rotation.x = swing;
     mesh.legR.rotation.x = -swing;
-    mesh.armL.rotation.x = -swing * 0.8;
-    mesh.armR.rotation.x = swing * 0.8;
+    if (state.aiming && state.armed) {
+      mesh.armR.rotation.x = -1.35;
+      mesh.armL.rotation.x = -0.9;
+    } else {
+      mesh.armL.rotation.x = -swing * 0.8;
+      mesh.armR.rotation.x = swing * 0.8;
+    }
+    if (state.flinch > 0) {
+      state.flinch -= dt;
+      mesh.group.rotation.x = Math.sin(state.flinch * 20) * 0.08;
+    } else {
+      mesh.group.rotation.x = 0;
+    }
     mesh.group.position.set(state.x, state.y, state.z);
     mesh.group.rotation.y = state.heading;
     return { x: state.x, z: state.z, y: state.y, speed: state.speed, heading: state.heading };
   }
 
-  return { state, place, update, mesh: mesh.group };
+  return { state, place, update, setArmed, flinch, mesh: mesh.group };
 }

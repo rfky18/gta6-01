@@ -1,7 +1,7 @@
 // NEON DISTRICT: CITY OF CRIME — boot + the one loop. Input is read every
 // frame, the world advances in fixed 1/60 s steps, the renderer paints what
 // is there. Screens: title, play, paused, busted.
-// ?seed=N fixes the city layout. ?shot=start|play|end|street stages that
+// ?seed=N fixes the city layout. ?rain=1 turns on the rain. ?shot=start|play|end|street|combat stages that
 // scene instead of running the loop, paints it twice and sets
 // window.__shotReady for a screenshot.
 import { STEP, GAME, WORLD } from './config.js';
@@ -14,11 +14,13 @@ import { createTraffic } from './traffic.js';
 import { createPedestrians } from './pedestrians.js';
 import { createPolice } from './police.js';
 import { createMissions } from './missions.js';
+import { createCombat } from './combat.js';
 import { createHud } from './hud.js';
 import { createAudio } from './audio.js';
 import { loadSave, saveGame } from './save.js';
 import { createRender } from './render.js';
 import { stageShot } from './shots.js';
+import { warmPortraits } from './portraits.js';
 
 const MAX_FRAME = 0.25;
 const params = new URLSearchParams(window.location.search);
@@ -31,14 +33,15 @@ const status = document.getElementById('status');
 const render = createRender(canvas);
 const world = createWorld(render.scene, seed);
 const player = createPlayer(render.scene, world);
-const car = createDrivableCar(render.scene, world, { body: 0xe84a3a, sport: true, name: 'Solaris GT' });
-const traffic = createTraffic(render.scene, seed, 8);
-const pedestrians = createPedestrians(render.scene, seed, 20);
+const car = createDrivableCar(render.scene, world, { body: 0xc01616, sport: true, name: 'Solaris GT' });
+const traffic = createTraffic(render.scene, seed, 12);
+const pedestrians = createPedestrians(render.scene, seed, 32);
 const police = createPolice(render.scene, world);
-const missions = createMissions(render.scene, world);
 const hud = createHud();
 const audio = createAudio();
 const input = createInput(canvas);
+warmPortraits();
+if (params.get('rain') === '1') world.setRain(true);
 
 const state = {
   screen: 'title',
@@ -54,11 +57,48 @@ const state = {
   saveTimer: 0,
   stoleCar: false,
   bustedCount: 0,
+  kmh: 0,
 };
+
+// Combat owns guns + rivals; its hooks feed back into this state.
+const combat = createCombat(render.scene, world, {
+  audio,
+  onPlayerDamage(amount) {
+    // Armour absorbs first, the rest hits health.
+    let rest = amount;
+    if (state.armour > 0) {
+      const absorbed = Math.min(state.armour, rest);
+      state.armour -= absorbed;
+      rest -= absorbed;
+    }
+    if (rest > 0) state.health -= rest;
+    player.flinch();
+    if (state.health <= 0) wasted();
+  },
+  onEnemyDown() {
+    state.rep += 0; // kills do not pay REP on their own; missions do.
+  },
+  onPanic(x, z) {
+    pedestrians.panicAt(x, z);
+  },
+});
+
+const missions = createMissions(render.scene, world, {
+  spawnEnemies(spot, count) {
+    combat.spawnEnemies(spot, count);
+  },
+  setWanted(n) {
+    setWanted(n);
+  },
+  clearWanted() {
+    setWanted(0);
+  },
+});
 
 let jumpQueued = false;
 let prevRadio = false;
-let policeInfo = { mode: 'PATROL', distance: 999, busted: false };
+let prevFiring = false;
+let policeInfo = { mode: 'PATROL', distance: 999, busted: false, units: [] };
 
 function clockText() {
   const mins = Math.floor(state.clockMinutes);
@@ -109,8 +149,13 @@ function doSave() {
     health: state.health,
     armour: state.armour,
     rep: state.rep,
+    missionIndex: missions.state.index,
     missionStage: missions.state.stage,
     missionDone: missions.state.done,
+    missionAllDone: missions.state.allDone,
+    weaponSlot: combat.state.slot,
+    mags: combat.state.mags,
+    reserves: combat.state.reserves,
     playerX: player.state.x,
     playerZ: player.state.z,
     carX: car.state.x,
@@ -124,9 +169,13 @@ function applySave(data) {
   state.health = data.health ?? 100;
   state.armour = data.armour ?? 50;
   state.rep = data.rep ?? 0;
-  missions.state.stage = data.missionStage ?? 0;
-  missions.state.done = !!data.missionDone;
-  missions.state.hasPackage = missions.state.stage >= 1 && !missions.state.done;
+  missions.setState(data.missionIndex || 0, data.missionStage || 0, !!data.missionAllDone);
+  if (typeof data.weaponSlot === 'number') combat.switchWeapon(data.weaponSlot);
+  if (Array.isArray(data.mags)) {
+    for (let i = 0; i < data.mags.length; i += 1) {
+      combat.setAmmo(i, data.mags[i], Array.isArray(data.reserves) ? data.reserves[i] : combat.state.reserves[i]);
+    }
+  }
   if (data.player) player.place(data.player.x, data.player.z, 0);
   if (data.car) car.place(data.car.x, data.car.z, data.car.heading || 0);
 }
@@ -135,6 +184,7 @@ function startGame(fresh) {
   audio.unlock();
   if (fresh) {
     missions.reset();
+    combat.clearEnemies();
     state.money = GAME.startMoney;
     state.health = 100;
     state.armour = 50;
@@ -164,32 +214,103 @@ function showTitle() {
   document.getElementById('btn-continue').style.display = saved ? 'block' : 'none';
 }
 
+// Busted (pinned by police) and wasted (shot down) share the screen; the
+// heading and text say which one happened.
+function showEndScreen(kind) {
+  state.screen = 'busted';
+  const screen = document.getElementById('busted-screen');
+  const h1 = screen.querySelector('h1');
+  const p = screen.querySelector('p');
+  if (kind === 'wasted') {
+    if (h1) h1.textContent = 'WASTED';
+    if (p) p.textContent = 'Ferro’s crew left you in the gutter. A street doc patched you up for $100 — the night is young.';
+  } else {
+    if (h1) h1.textContent = 'BUSTED';
+    if (p) p.textContent = 'SVPD caught up with you. They took $100 and dropped you at the garage. The night is young.';
+  }
+  screen.style.display = 'flex';
+  document.getElementById('hud').style.display = 'none';
+  audio.busted();
+  player.place(world.garage.x, world.garage.z, 0);
+  player.mesh.visible = true;
+  state.driving = false;
+  combat.clearEnemies();
+  police.teleport(120, -120);
+  doSave();
+}
+
+function busted() {
+  state.bustedCount += 1;
+  state.money = Math.max(0, state.money - 100);
+  setWanted(0);
+  showEndScreen('busted');
+}
+
+function wasted() {
+  state.money = Math.max(0, state.money - 100);
+  setWanted(0);
+  state.health = 100;
+  state.armour = 50;
+  showEndScreen('wasted');
+}
+
 // One fixed step of the whole simulation.
 function step(dt, silent) {
   state.time += dt;
   world.update(dt, state.time);
-  traffic.update(dt, state.driving ? car.state : null);
+  world.applyTimeOfDay(state.clockMinutes);
+  traffic.update(dt, state.driving ? car.state : null, police.state);
   pedestrians.update(dt, state.driving ? car.state : player.state);
   const target = state.driving ? car.state : player.state;
   policeInfo = police.update(dt, target, state.wanted, state.time);
   if (state.screen !== 'play' && !silent) return;
   if (state.screen === 'play' || silent) {
     const look = silent ? { dx: 0, dy: 0 } : input.takeLook();
+    // Weapon select / reload (on foot only; the wheel is no place for a gun).
+    if (!silent) {
+      const ws = input.takeWeaponSelect();
+      if (ws >= 0 && !state.driving) {
+        if (combat.switchWeapon(ws)) player.setArmed(ws > 0, input.aiming());
+      }
+      if (input.takeReload() && !state.driving) combat.reload();
+    }
     if (state.driving) {
       const drive = input.drive();
       const res = car.update(dt, drive);
       state.kmh = res.kmh;
+      player.setArmed(false, false);
     } else {
       const move = input.move();
       player.update(dt, move, input.sprint(), jumpQueued, render.cam.yaw);
       jumpQueued = false;
       state.kmh = 0;
+      player.setArmed(combat.state.slot > 0, input.aiming());
+      // Shooting: left mouse, on foot. Semi-auto guns fire once per click.
+      if (!silent && input.firing()) {
+        const w = combat.weapon();
+        const freshClick = !prevFiring;
+        if (w.auto || freshClick) {
+          const dir = render.aimDirection();
+          const res = combat.tryFire({ x: player.state.x, y: player.state.y, z: player.state.z }, dir);
+          if (res) {
+            if (res.hit) hud.hitmark();
+            render.shake(w.kick || 0.02);
+          }
+        }
+      }
+      prevFiring = input.firing();
     }
-    // Mission marker proximity.
+    combat.update(dt, state.driving ? car.state : player.state);
+    // Mission marker proximity + combat-stage auto-advance.
     const mpos = state.driving ? car.state : player.state;
-    const m = missions.update(dt, state.time, mpos);
+    const m = missions.update(dt, state.time, mpos, combat.enemiesAlive());
     state.missionNear = m ? m.near : false;
     state.missionDistance = m ? m.distance : 999;
+    if (m && m.combatCleared && m.line) {
+      hud.say(m.line.speaker, m.line.text, 7);
+      hud.banner('AREA CLEAR', 3);
+      audio.missionDone();
+    }
     // Wanted decay: lose the cops by staying far away for a while.
     if (state.wanted > 0) {
       if (policeInfo.distance > 60) state.crimeTimer -= dt;
@@ -200,18 +321,7 @@ function step(dt, silent) {
       }
     }
     if (policeInfo.busted && !silent) {
-      state.bustedCount += 1;
-      state.money = Math.max(0, state.money - 100);
-      setWanted(0);
-      state.screen = 'busted';
-      document.getElementById('busted-screen').style.display = 'flex';
-      document.getElementById('hud').style.display = 'none';
-      audio.busted();
-      player.place(world.garage.x, world.garage.z, 0);
-      player.mesh.visible = true;
-      state.driving = false;
-      police.teleport(120, -120);
-      doSave();
+      busted();
       return;
     }
     // Clock + autosave.
@@ -248,16 +358,23 @@ function pushHud(dt) {
     x: pos.x,
     z: pos.z,
     street: streetName(pos.x, pos.z),
+    // Speedometer: metres/second x 3.6 = km/h. Max car speed 34 m/s reads
+    // 122 km/h — verified in the ?shot=play staging (v1 artifact of 1-8
+    // km/h was the llvmpipe software renderer at ~0.3 fps, not the math).
     kmh: state.driving ? Math.abs(car.state.speed) * 3.6 : Math.abs(player.state.speed) * 3.6,
     vehicle: state.driving ? car.state.name : 'ON FOOT',
     condition: car.state.condition,
     policeDistance: Math.hypot(police.state.x - pos.x, police.state.z - pos.z),
     policeMode: policeInfo.mode,
+    policeUnits: policeInfo.units || [],
     policeX: police.state.x,
     policeZ: police.state.z,
     traffic: traffic.cars,
+    enemies: combat.enemyPositions(),
     missionSpot: missions.currentSpot(),
     heading: state.driving ? car.state.heading : player.state.heading,
+    weapons: combat.weaponInfo(),
+    showCrosshair: !state.driving && combat.state.slot > 0,
     showInteract: state.missionNear || (!state.driving && Math.hypot(player.state.x - car.state.x, player.state.z - car.state.z) < 4),
   });
 }
@@ -272,12 +389,18 @@ function handleInteract() {
     if (line) {
       hud.say(line.speaker, line.text, 7);
       audio.pickup();
-      if (missions.state.done) {
-        state.money += GAME.missionReward;
+      if (line.completed) {
+        state.money += line.reward;
         state.rep += 1;
         audio.missionDone();
-        hud.banner(`MISSION COMPLETE — FIRST NIGHT  +$${GAME.missionReward}`, 4);
+        hud.banner(`MISSION COMPLETE — ${line.title}  +$${line.reward}`, 4);
         doSave();
+        if (line.nextIntro) {
+          window.setTimeout(() => hud.say(line.nextIntro.speaker, line.nextIntro.text, 8), 4500);
+        }
+        if (line.allDone) {
+          hud.banner('SAN VEGA LEGEND — ALL 8 JOBS DONE', 6);
+        }
       }
     }
     return;
@@ -345,6 +468,7 @@ function frame(now) {
   if (state.screen === 'title') {
     // Slow orbit over the city behind the title screen.
     render.cam.yaw += dt * 0.02;
+    render.cam.targetYaw = render.cam.yaw;
     render.update(dt, { dx: 0, dy: 0 }, { x: -8, y: 0, z: 24 }, false, 0);
   }
   render.render();
@@ -380,6 +504,7 @@ const game = {
   pedestrians,
   police,
   missions,
+  combat,
   hud,
   render,
   world,
