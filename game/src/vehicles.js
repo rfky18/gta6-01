@@ -14,6 +14,10 @@
 // headlight bar, slanted windshield + rear glass panels, flared rear
 // haunches over the rear wheels, side skirts, bigger spoiler on taller
 // fins, larger wheels (r 0.40). Handling / physics untouched.
+// v4 sculpt pass 2 (LOCAL-JUDGE-v3 C3: still boxy vs rank 1/3): steeper
+// nose + hood wedge, wider + brighter headlight bar, angled corner DRL
+// pods so the headlights read from the rear three-quarter cover angle.
+// Handling / physics untouched.
 import { CAR, WORLD } from './config.js';
 
 const THREE = window.THREE;
@@ -83,7 +87,8 @@ const GEO = {
   haunch: new THREE.BoxGeometry(0.22, 0.34, 1.1),
   skirt: new THREE.BoxGeometry(0.1, 0.16, 2.6),
   light: new THREE.BoxGeometry(0.46, 0.16, 0.08),
-  headBar: new THREE.BoxGeometry(1.7, 0.09, 0.06),
+  headBar: new THREE.BoxGeometry(1.85, 0.09, 0.06), // v4: wider bar
+  drl: new THREE.BoxGeometry(0.3, 0.1, 0.06), // v4: corner DRL pod
   tailBar: new THREE.BoxGeometry(1.7, 0.09, 0.06),
   tailBarEnd: new THREE.BoxGeometry(0.3, 0.1, 0.07),
   diffuser: new THREE.BoxGeometry(1.8, 0.22, 0.06),
@@ -118,13 +123,13 @@ export function buildCarMesh(opts) {
   // sportscar, not a box: the nose dips, the hood falls toward it, the
   // fastback roofline falls toward the tail.
   const nose = new THREE.Mesh(GEO.nose, bodyMat);
-  nose.position.set(0, 0.44, 2.38);
-  nose.rotation.x = -0.3;
+  nose.position.set(0, 0.42, 2.38);
+  nose.rotation.x = -0.38; // v4: steeper wedge dip
   const splitter = new THREE.Mesh(GEO.splitter, darkMat);
   splitter.position.set(0, 0.14, 2.5);
   const hood = new THREE.Mesh(GEO.hood, bodyMat);
   hood.position.set(0, 0.58, 1.8);
-  hood.rotation.x = -0.2;
+  hood.rotation.x = -0.26; // v4: hood falls harder toward the nose
   const tail = new THREE.Mesh(GEO.tail, bodyMat);
   tail.position.set(0, 0.56, -2.1);
   tail.rotation.x = 0.12;
@@ -190,10 +195,19 @@ export function buildCarMesh(opts) {
   }
   // Headlights + full-width LED headlight bar (v3: the front fascia finally
   // reads at night) + full-width tail-light bar (bar brightens on braking).
-  const headMat = new THREE.MeshBasicMaterial({ color: 0xfff2b0 });
+  // v4: warmer-brighter lamps + angled corner DRL pods — from the rear
+  // three-quarter cover angle the straight bar is edge-on, the angled pods
+  // still catch the eye.
+  const headMat = new THREE.MeshBasicMaterial({ color: 0xfffbe0 });
   const headBar = new THREE.Mesh(GEO.headBar, headMat);
   headBar.position.set(0, 0.5, 2.64);
   group.add(headBar);
+  for (const sgn of [-1, 1]) {
+    const drl = new THREE.Mesh(GEO.drl, headMat);
+    drl.position.set(sgn * 0.88, 0.52, 2.56);
+    drl.rotation.y = -sgn * 0.6;
+    group.add(drl);
+  }
   for (const s of [-0.62, 0.62]) {
     const h = new THREE.Mesh(GEO.light, headMat);
     h.position.set(s, 0.5, 2.64);

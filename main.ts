@@ -30,7 +30,11 @@ if (existsSync(join(here, 'screenshots'))) cpSync(join(here, 'screenshots'), joi
 // v3 entry: late-story cover staging (MISSION 6/8, REP 4 BAY HUSTLER, 3-star
 // heat, 5-unit SVPD response), sculpted Solaris GT wedge, lower sun,
 // mission banner moved clear of the police panel.
-const ENTRY_VERSION = 'v3 — late-story cover, sculpted Solaris GT, banner fix';
+// v4 entry: MISSION 7/8 SUNSET GETAWAY cover (Rico Vane), REP XP numbers
+// (1.960 / 2.400 XP), mission timer 2:40 + PAR BONUS +$650, combat staged
+// at REP 4, warm orange sun, textured road, varied building windows,
+// sculpt pass 2 on the Solaris GT (steeper wedge, brighter headlights).
+const ENTRY_VERSION = 'v4 — MISSION 7/8 cover, REP XP + timer/PAR HUD, warm sun, road/building polish, car sculpt pass 2';
 writeFileSync(
   join(out, 'dossier.json'),
   buildDossier(out, {

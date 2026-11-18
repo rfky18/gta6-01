@@ -27,6 +27,12 @@ hideout — on foot or behind the wheel of the Solaris GT.
 - **HUD**: mission panel (N/8 + stage progress), wanted stars, money, police response list (up to 5 units: 4 ground + HAWK-1), 5 weapon slots with live ammo, circular minimap with purple route to the objective, health/armour, REP + REP progress bar, crosshair + hitmarker
 - **Save**: progress autosaves to localStorage (mission, weapons, ammo included)
 
+## v4 (19 Nov 2026)
+- Cover staged one job deeper: MISSION 7/8 — SUNSET GETAWAY (Rico Vane dialog, stage 2/3), REP 4 · BAY HUSTLER.
+- HUD depth (LOCAL-JUDGE-v3 C2): REP bar now shows XP numbers ("1.960 / 2.400 XP"); mission panel adds a countdown timer (PAR 2:40 on the cover) + PAR BONUS (+$650); combat shot staged at REP 4.
+- Polish (C3): warm orange sun with a sharp edge (no more blown pale disc), denser asphalt noise + repair patches + tar-seam cracks, four building window variants (warm/cool/sparse/bright, some orange/pink/green, dark floors).
+- Car sculpt pass 2: steeper nose/hood wedge, wider + brighter headlight bar, angled corner DRL pods visible from the rear three-quarter cover angle. Handling/physics untouched.
+
 ## v3 — cover staging + sculpt (local-judge v2 lost 1W–5L)
 
 - **Cover**: the `?shot=play` frame stages the late story — MISSION 6/8 (PALM COURT PICKUP, stage 2/2), REP 4 · BAY HUSTLER with the REP bar 80% full, 3-star wanted, 5 named SVPD units in the response list, 5 traffic cars + 6 pedestrians in frame, sun low over the water at 19:12, $34,750

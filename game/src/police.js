@@ -9,6 +9,8 @@
 // and a second unit joins at wanted 2 — the response list in the HUD shows
 // both units plus the helicopter.
 // v3: units 3 + 4 join at wanted 3 (cover staging: 5 named units in frame).
+// v4: HAWK-1 spotlight cone 0.20 -> 0.22 so the heli reads a touch stronger
+// in the cover frame against the brighter orange sun.
 import { buildCarMesh } from './vehicles.js';
 import { POLICE_CALLSIGNS } from './config.js';
 
@@ -26,7 +28,7 @@ function makeHeli() {
   rotor.position.y = 1.1;
   const spot = new THREE.Mesh(
     new THREE.ConeGeometry(3.2, 22, 12, 1, true),
-    new THREE.MeshBasicMaterial({ color: 0xfff2b0, transparent: true, opacity: 0.2, side: THREE.DoubleSide, depthWrite: false }),
+    new THREE.MeshBasicMaterial({ color: 0xfff2b0, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false }),
   );
   spot.position.y = -11;
   heli.add(heliBody, heliGlass, heliTail, rotor, spot);

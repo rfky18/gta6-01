@@ -20,9 +20,16 @@
   #mission-stage-label { position: absolute; right: 0; top: -15px; font-size: 11px; font-weight: 700; color: #ffd23e; }
   #mission-next { margin-top: 6px; font-size: 12px; color: #9be8ff; }
   #mission-next b { color: #ffd23e; }
-  /* Police response, left under mission (v3: 5 rows at 3 stars, so the
-     panel starts a touch lower to clear the taller mission panel). */
-  #police-panel { position: absolute; top: 176px; left: 14px; width: 330px; padding: 9px 14px; display: none; }
+  /* v4: mission clock + PAR BONUS rows (rank-5 depth signal): the timer
+     counts down from the mission's PAR time, the bonus is what a PAR
+     finish pays on top of the reward. */
+  #mission-meta { margin-top: 7px; display: flex; justify-content: space-between; font-size: 12px; font-weight: 800; }
+  #mission-timer { color: #ffd23e; }
+  #mission-timer.late { color: #ff5e3e; }
+  #mission-par { color: #37ff8a; }
+  /* Police response, left under mission (v4: the mission panel grew two
+     rows taller, so the panel starts lower to clear it). */
+  #police-panel { position: absolute; top: 212px; left: 14px; width: 330px; padding: 9px 14px; display: none; }
   #police-panel h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: 1px; color: #ff8a7a; }
   #police-panel h3 span { float: right; color: #f2f1f5; }
   .police-row { display: flex; justify-content: space-between; font-size: 13px; padding: 2px 0; }
@@ -60,7 +67,8 @@
   .vital-bar i { display: block; height: 100%; }
   #health-fill { background: #37ff8a; width: 100%; }
   #armour-fill { background: #37b6ff; width: 50%; }
-  #hud-rep { font-size: 11px; font-weight: 700; color: #ffd23e; text-shadow: 0 1px 3px #000; margin-top: 4px; }
+  /* v4: 11 -> 10 px so "REP 4 · BAY HUSTLER — 1.960/2.400 XP" fits one line. */
+  #hud-rep { font-size: 10px; font-weight: 700; color: #ffd23e; text-shadow: 0 1px 3px #000; margin-top: 4px; white-space: nowrap; }
   /* v3: REP progress bar under the REP title (fills toward the next title). */
   #rep-bar { margin-top: 4px; height: 6px; background: rgba(0,0,0,0.55); border-radius: 3px; overflow: hidden; }
   #rep-fill { display: block; height: 100%; background: #ffd23e; width: 0%; }
@@ -110,6 +118,7 @@
     <div id="mission-objective">Ride to Palmera Pier — Nadia left a package there.</div>
     <div id="mission-stage"><i id="mission-stage-fill"></i><span id="mission-stage-label">STAGE 1/2</span></div>
     <div id="mission-next"><b>NEXT</b> <span id="mission-next-text">Pick up the package</span></div>
+    <div id="mission-meta"><span id="mission-timer">⏱ 2:30</span><span id="mission-par">PAR BONUS +$250</span></div>
   </div>
   <div id="police-panel" class="panel">
     <h3>▸ SVPD RESPONSE <span id="police-count">2 UNITS · CODE 1</span></h3>

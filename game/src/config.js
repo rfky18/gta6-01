@@ -62,17 +62,22 @@ export const GAME = {
   pdName: 'SVPD',
 };
 
-// v3 cover staging (shots.js stages exactly this state for ?shot=play):
-// late story (mission 6/8), REP 4 with its title, 3-star heat, a full
+// v4 cover staging (shots.js stages exactly this state for ?shot=play):
+// late story (mission 7/8), REP 4 with its title, 3-star heat, a full
 // 5-unit SVPD response, and the sun low over the water at 19:12.
 export const COVER = {
-  missionIndex: 5, // PALM COURT PICKUP — MISSION 6/8
-  missionStage: 1,
+  missionIndex: 6, // SUNSET GETAWAY — MISSION 7/8 (v4: one job deeper than v3)
+  missionStage: 1, // stage 2/3 — beach stop done, pier run left (Rico Vane)
   rep: 4,
   wanted: 3,
   money: 34750,
   clockMinutes: 19 * 60 + 12,
 };
+
+// v4 — REP XP ladder (cumulative XP needed to REACH each REP level). The HUD
+// shows "current / next XP": REP 4 reads 1.960 / 2.400 XP toward REP 5
+// (SAN VEGA LEGEND), matching the 80% REP bar.
+export const REP_XP = [0, 400, 900, 1500, 1960, 2400];
 
 // v3 — REP titles: BAY HUSTLER now starts at REP 4 (was 5), so the cover's
 // REP 4 reads as a made name, like the top-10 covers (REP 3–4 + title).
@@ -91,7 +96,7 @@ export const POLICE_CALLSIGNS = ['VIPER-4', 'VIPER-7', 'VIPER-9', 'VIPER-12'];
 export const PALETTE = {
   sky: 0xff9e64,
   fog: 0xf2a06b,
-  sun: 0xffc27a,
+  sun: 0xff8a3e, // v4: warm orange sun (was pale yellow-white 0xffc27a)
   sunLight: 0xffb36b,
   hemiSky: 0xffb8c6,
   hemiGround: 0x5a4a7a,

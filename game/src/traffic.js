@@ -7,7 +7,7 @@ import { buildCarMesh } from './vehicles.js';
 import { createRandom, pick, range } from './random.js';
 
 const THREE = window.THREE;
-const COLORS = [0xf2c94c, 0x7fb3d5, 0x9b7fb8, 0x5fb8a6, 0xd9d9d9, 0x3a7d5e, 0xc96a3a, 0x8a9bb0, 0x2e6f8e, 0xe86a92];
+const COLORS = [0xf2c94c, 0x7fb3d5, 0x9b7fb8, 0x5fb8a6, 0xd9d9d9, 0x3a7d5e, 0xc96a3a, 0x8a9bb0, 0x2e6f8e, 0xe86a92, 0xff8a3e]; // v4: + sunset-orange car
 
 export function createTraffic(scene, seed, count) {
   const rng = createRandom(seed + 77);

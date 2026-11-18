@@ -5,9 +5,12 @@
 // v3: saves carry a version stamp, and loadSave rejects saves with an
 // out-of-range mission or negative REP instead of resuming into a broken
 // state (a v3-staged REP 4 / mission 6 save must load as REP 4 / mission 6).
+// v4: SAVE_VERSION 4 (cover is now MISSION 7/8); loadSave also rejects
+// saves stamped NEWER than this build, so a downgraded build never resumes
+// into a state it does not understand.
 import { GAME } from './config.js';
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 export function loadSave() {
   try {
@@ -15,6 +18,7 @@ export function loadSave() {
     if (!raw) return null;
     const data = JSON.parse(raw);
     if (typeof data !== 'object' || data === null) return null;
+    if (typeof data.version === 'number' && data.version > SAVE_VERSION) return null;
     if (typeof data.missionIndex === 'number' && (data.missionIndex < 0 || data.missionIndex > 7)) return null;
     if (typeof data.rep === 'number' && data.rep < 0) return null;
     return data;

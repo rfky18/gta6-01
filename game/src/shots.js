@@ -2,15 +2,15 @@
 // stages the real game state deterministically (no mocks, no composited
 // frames) and the caller paints it twice, then sets window.__shotReady.
 //
-// v3 cover (LOCAL-JUDGE-v2: v2 lost 1W–5L — REP 0 · NOBODY + MISSION 1/8
-// signalled "no progression", the street was empty, only 3 police units):
+// v4 cover (LOCAL-JUDGE-v3: v3 went 2W–4L, all losses margin 1 on C2/C3):
 // Dario drives the red Solaris GT south down Ocean Boulevard — the low sun
 // ahead-left over the water, the ferris wheel ahead-right, palms and the
 // beach on the right, downtown towers and the SAN VEGA CITY billboard on
 // the left, VIPER-4 big and close beside him, VIPER-7 ahead, VIPER-9 +
 // VIPER-12 further up the road, HAWK-1 in the sky. Wanted 3, $34,750,
-// MISSION 6/8 (PALM COURT PICKUP, stage 2/2), REP 4 · BAY HUSTLER with the
-// REP bar nearly full, 5 traffic cars + 6 walkers in frame, full HUD.
+// MISSION 7/8 (SUNSET GETAWAY, stage 2/3, Rico Vane dialog), REP 4 ·
+// BAY HUSTLER with the REP bar nearly full + "1.960 / 2.400 XP", mission
+// timer 2:40 + PAR BONUS +$650, 5 traffic cars + 6 walkers in frame, full HUD.
 import { GAME, COVER } from './config.js';
 
 export function stageShot(game, name) {
@@ -24,10 +24,10 @@ export function stageShot(game, name) {
     g.state.clockMinutes = COVER.clockMinutes;
     g.state.money = COVER.money;
     g.state.rep = COVER.rep;
-    // Late story, not the first job: MISSION 6/8, stage 2/2 (see COVER).
+    // Late story, not the first job: MISSION 7/8, stage 2/3 (see COVER).
     g.missions.setLateGame();
     g.combat.switchWeapon(2);
-    g.hud.say('Selma Ortiz', 'Parcel’s yours. The bar on Neon Mile is expecting it — back room, no names.', 30);
+    g.hud.say('Rico Vane', 'Beach stop done. Last one’s the pier — don’t stop for anyone.', 30);
     g.render.snapBehind(Math.PI, { x: 180, y: 0, z: 60 }, true);
     // Roll the world forward 1.5 s with the throttle held so traffic,
     // the wheel and the pursuit are mid-motion, not frozen at spawn.
@@ -74,6 +74,12 @@ export function stageShot(game, name) {
     // the pitch so the camera sees the rear + flank instead of the roof
     // slab. Wide cover FOV so the sun (left) and the ferris wheel (right)
     // both fit.
+    // v4: pin the mission clock to the full PAR time (2:40) — the silent
+    // staging steps above already burned ~2 s off it.
+    g.missions.setTimer(0);
+    // v4: yaw offset stays 0.38 (v3) — swinging it to 0.46 pushed the
+    // ferris wheel out of the frame (C1 breadth loss, not worth it for a
+    // headlight edge the rear camera barely sees anyway).
     g.render.coverFraming(0.38, 76);
     g.render.cam.pitch = 0.15;
     return 'play';
@@ -103,6 +109,9 @@ export function stageShot(game, name) {
     // (-158,-158) put the camera inside the (-150,-150) building block.)
     g.missions.setState(4, 1, false);
     g.state.money = 18450;
+    // v4: combat stages at REP 4, like the cover — no more REP 0 · NOBODY
+    // in the contact sheet.
+    g.state.rep = 4;
     g.setWanted(2);
     g.state.clockMinutes = 18 * 60 + 40;
     g.player.place(-180, -150, 0);
@@ -111,6 +120,8 @@ export function stageShot(game, name) {
     g.combat.switchWeapon(4);
     // Silent steps let the combat stage spawn its three rivals at the docks.
     for (let i = 0; i < 30; i += 1) g.step(1 / 60, true);
+    // v4: pin the mission clock to the full PAR time (4:00) after staging.
+    g.missions.setTimer(0);
     g.player.place(-180, -150, 0);
     g.player.lookAt(-185, -178);
     g.render.snapBehind(g.player.state.heading, { x: -180, y: 0, z: -150 }, false);

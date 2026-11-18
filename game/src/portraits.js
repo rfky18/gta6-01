@@ -2,6 +2,8 @@
 // per character (hue + hair + accessory from config.js). No remote assets —
 // each portrait is drawn once, cached as a data URI, and set on the <img> in
 // the dialog box by hud.js. Unknown speakers fall back to initials.
+// v4: Rico Vane's portrait is now the cover dialog (SUNSET GETAWAY);
+// the neon rim light is a touch thicker so it stays crisp at 104 px.
 import { CHARACTERS } from './config.js';
 
 const cache = new Map();
@@ -15,7 +17,7 @@ function drawPortrait(g, c, size) {
   g.fillRect(0, 0, size, size);
   // Neon rim light.
   g.strokeStyle = 'rgba(255,210,62,0.9)';
-  g.lineWidth = 3;
+  g.lineWidth = 3.5; // v4: 3 -> 3.5
   g.strokeRect(1.5, 1.5, size - 3, size - 3);
   const cx = size / 2;
   // Shoulders / jacket.

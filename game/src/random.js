@@ -53,3 +53,9 @@ export function lerp(a, b, t) {
 export function chance(rng, probability) {
   return rng() < probability;
 }
+
+// v4: XP numbers in the HUD use Indonesian thousands separators
+// (1960 -> "1.960"), matching the in-world money style ($34.750).
+export function formatXp(n) {
+  return Math.max(0, Math.round(n)).toLocaleString('id-ID');
+}

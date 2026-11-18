@@ -6,7 +6,7 @@ import { WORLD } from './config.js';
 import { createRandom, pick, range } from './random.js';
 
 const THREE = window.THREE;
-const SHIRTS = [0xe86a92, 0x7fb3d5, 0xf2c94c, 0x5fb8a6, 0xd96a5f, 0x9b7fb8, 0xe8e8e8, 0x3a7d5e];
+const SHIRTS = [0xe86a92, 0x7fb3d5, 0xf2c94c, 0x5fb8a6, 0xd96a5f, 0x9b7fb8, 0xe8e8e8, 0x3a7d5e, 0xff8a3e]; // v4: + sunset-orange shirt
 
 const SKIN_TONES = [0xc98d64, 0x8a5a3a, 0xe8b88a, 0x6b4423];
 let skinCursor = 0;

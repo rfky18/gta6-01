@@ -13,35 +13,35 @@ const THREE = window.THREE;
 // through the hooks when the mission begins.
 export const MISSIONS = [
   {
-    id: 'first-night', title: 'FIRST NIGHT', chapter: 'CH 1', giver: 'Nadia Cruz', reward: 500,
+    id: 'first-night', title: 'FIRST NIGHT', chapter: 'CH 1', giver: 'Nadia Cruz', reward: 500, par: { seconds: 150, bonus: 250 },
     stages: [
       { type: 'goto', spot: 'pier', objective: 'Ride to Palmera Pier — Nadia left a package there.', next: 'Pick up the package', line: { speaker: 'Nadia Cruz', text: 'That’s the package. Don’t open it, don’t stop for anyone — garage, now.' } },
       { type: 'deliver', spot: 'garage', objective: 'Package secured. Bring it back to Nadia’s garage.', next: '—', line: { speaker: 'Nadia Cruz', text: 'Clean run, Dario. $500 is yours. The city’s starting to notice you.' } },
     ],
   },
   {
-    id: 'stolen-wheels', title: 'STOLEN WHEELS', chapter: 'CH 2', giver: 'Nadia Cruz', reward: 600,
+    id: 'stolen-wheels', title: 'STOLEN WHEELS', chapter: 'CH 2', giver: 'Nadia Cruz', reward: 600, par: { seconds: 180, bonus: 300 },
     stages: [
       { type: 'goto', spot: 'plaza', objective: 'Lift the Comet keys from Crown Plaza — the valet leaves them on the counter.', next: 'Grab the keys', line: { speaker: 'Nadia Cruz', text: 'Keys in your pocket? Good. That Comet is worth more than my garage.' } },
       { type: 'deliver', spot: 'garage', objective: 'Keys in hand. Bring them home to the garage.', next: '—', line: { speaker: 'Nadia Cruz', text: 'Two jobs, two paydays. You’re getting good at this, Dario.' } },
     ],
   },
   {
-    id: 'neon-runner', title: 'NEON RUNNER', chapter: 'CH 2', giver: 'Rico Vane', reward: 700,
+    id: 'neon-runner', title: 'NEON RUNNER', chapter: 'CH 2', giver: 'Rico Vane', reward: 700, par: { seconds: 180, bonus: 350 },
     stages: [
       { type: 'goto', spot: 'neonBar', objective: 'Pick up Rico’s envelope at the Neon Mile bar.', next: 'Grab the envelope', line: { speaker: 'Rico Vane', text: 'That envelope pays my rent for a month. Don’t get it wet, don’t get it read.' } },
       { type: 'deliver', spot: 'beachfront', objective: 'Drop the envelope at the Palmera Beach lifeguard hut.', next: '—', line: { speaker: 'Rico Vane', text: 'Delivered clean. Rico Vane owes you one — and Rico always pays his debts.' } },
     ],
   },
   {
-    id: 'police-pressure', title: 'POLICE PRESSURE', chapter: 'CH 3', giver: 'Nadia Cruz', reward: 800, wantedOnStart: 2,
+    id: 'police-pressure', title: 'POLICE PRESSURE', chapter: 'CH 3', giver: 'Nadia Cruz', reward: 800, par: { seconds: 210, bonus: 400 }, wantedOnStart: 2,
     stages: [
       { type: 'goto', spot: 'plaza', objective: 'SVPD is on you — cut through Crown Plaza and shake them.', next: 'Reach Crown Plaza', line: { speaker: 'Nadia Cruz', text: 'They’re all over the radio, Dario. Keep moving, don’t let them box you in.' } },
       { type: 'deliver', spot: 'hideout', objective: 'Lose the heat at the West Docks hideout.', next: '—', line: { speaker: 'Nadia Cruz', text: 'You vanished like smoke. $800, and the SVPD can keep their paperwork.' } },
     ],
   },
   {
-    id: 'dockside-trouble', title: 'DOCKSIDE TROUBLE', chapter: 'CH 3', giver: 'Selma Ortiz', reward: 1000,
+    id: 'dockside-trouble', title: 'DOCKSIDE TROUBLE', chapter: 'CH 3', giver: 'Selma Ortiz', reward: 1000, par: { seconds: 240, bonus: 500 },
     stages: [
       { type: 'goto', spot: 'docks', objective: 'Meet Selma’s crew at the Old Harbour docks.', next: 'Reach the docks', line: { speaker: 'Selma Ortiz', text: 'Ferro’s boys are here to take my crate. You’ve got a gun — use it.' } },
       { type: 'combat', spot: 'docks', count: 3, objective: 'Clear Ferro’s crew off the docks.', next: 'Take them down', line: { speaker: 'Selma Ortiz', text: 'Docks are clear. That’s how you handle Ferro’s boys — grab the crate.' } },
@@ -49,14 +49,14 @@ export const MISSIONS = [
     ],
   },
   {
-    id: 'palm-court-pickup', title: 'PALM COURT PICKUP', chapter: 'CH 4', giver: 'Selma Ortiz', reward: 900,
+    id: 'palm-court-pickup', title: 'PALM COURT PICKUP', chapter: 'CH 4', giver: 'Selma Ortiz', reward: 900, par: { seconds: 150, bonus: 450 },
     stages: [
       { type: 'goto', spot: 'beachfront', objective: 'Selma stashed a parcel by the beachfront palms.', next: 'Grab the parcel', line: { speaker: 'Selma Ortiz', text: 'Parcel’s yours. The bar on Neon Mile is expecting it — back room, no names.' } },
       { type: 'deliver', spot: 'neonBar', objective: 'Deliver it to the Neon Mile bar — ask for the back room.', next: '—', line: { speaker: 'Selma Ortiz', text: 'Done and quiet. That’s how Selma likes it. $900.' } },
     ],
   },
   {
-    id: 'sunset-getaway', title: 'SUNSET GETAWAY', chapter: 'CH 4', giver: 'Rico Vane', reward: 1200,
+    id: 'sunset-getaway', title: 'SUNSET GETAWAY', chapter: 'CH 4', giver: 'Rico Vane', reward: 1200, par: { seconds: 160, bonus: 650 },
     stages: [
       { type: 'goto', spot: 'plaza', objective: 'Rico’s getaway route: Crown Plaza first.', next: 'Reach Crown Plaza', line: { speaker: 'Rico Vane', text: 'One down, two to go. The sun’s setting — beautiful night for a getaway.' } },
       { type: 'goto', spot: 'beachfront', objective: 'Second stop — Palmera Beach.', next: 'Reach the beach', line: { speaker: 'Rico Vane', text: 'Beach stop done. Last one’s the pier — don’t stop for anyone.' } },
@@ -64,7 +64,7 @@ export const MISSIONS = [
     ],
   },
   {
-    id: 'the-final-deal', title: 'THE FINAL DEAL', chapter: 'CH 5', giver: 'Marco Ferro', reward: 2000,
+    id: 'the-final-deal', title: 'THE FINAL DEAL', chapter: 'CH 5', giver: 'Marco Ferro', reward: 2000, par: { seconds: 300, bonus: 1000 },
     stages: [
       { type: 'goto', spot: 'dealSpot', objective: 'The deal is at the harbour warehouse. Ferro will be waiting.', next: 'Reach the warehouse', line: { speaker: 'Marco Ferro', text: 'Dario Cole. You made it. Shame about the welcoming party — they shoot first.' } },
       { type: 'combat', spot: 'dealSpot', count: 4, objective: 'Ambush! Ferro’s crew wants the cash. Clear them out.', next: 'Take them down', line: { speaker: 'Marco Ferro', text: 'Huh. You fight like someone who wants to live. The cash is yours — take it and go.' } },
@@ -77,6 +77,9 @@ export const MISSION_TOTAL = MISSIONS.length;
 
 export function createMissions(scene, world, hooks) {
   const state = { index: 0, stage: 0, done: false, allDone: false, hasPackage: false, combatSpawned: false };
+  // v4 — mission clock: seconds spent on the current mission, for the HUD
+  // countdown (PAR time minus elapsed) and the PAR BONUS display.
+  let elapsed = 0;
   const h = hooks || {};
   // Beacon: glowing cylinder + light beam + spinning diamond.
   const beacon = new THREE.Group();
@@ -122,6 +125,7 @@ export function createMissions(scene, world, hooks) {
   placeBeacon();
 
   function startMission() {
+    elapsed = 0;
     state.stage = 0;
     state.done = false;
     state.hasPackage = false;
@@ -133,6 +137,7 @@ export function createMissions(scene, world, hooks) {
   }
 
   function update(dt, time, playerPos, enemiesAlive) {
+    if (!state.allDone) elapsed += dt;
     gem.rotation.y += dt * 2;
     gem.position.y = 3.2 + Math.sin(time * 2) * 0.4;
     beam.material.opacity = 0.18 + Math.sin(time * 3) * 0.06;
@@ -190,7 +195,7 @@ export function createMissions(scene, world, hooks) {
     const m = current();
     const stage = currentStage();
     if (state.allDone) {
-      return { title: 'SAN VEGA LEGEND', chapter: 'CH 5', giver: m.giver, objective: 'All 8 jobs done. The city is yours, Dario.', next: '—', index: MISSIONS.length - 1, total: MISSIONS.length, stage: 0, stages: 1, progress: 1 };
+      return { title: 'SAN VEGA LEGEND', chapter: 'CH 5', giver: m.giver, objective: 'All 8 jobs done. The city is yours, Dario.', next: '—', index: MISSIONS.length - 1, total: MISSIONS.length, stage: 0, stages: 1, progress: 1, parSeconds: 0, parBonus: 0, elapsed: 0 };
     }
     const doneStages = state.index;
     const progress = (doneStages + state.stage / m.stages.length) / MISSIONS.length;
@@ -198,6 +203,7 @@ export function createMissions(scene, world, hooks) {
       title: m.title, chapter: m.chapter, giver: m.giver, objective: stage.objective,
       next: stage.next, index: state.index, total: MISSIONS.length,
       stage: state.stage, stages: m.stages.length, progress,
+      parSeconds: m.par ? m.par.seconds : 0, parBonus: m.par ? m.par.bonus : 0, elapsed,
     };
   }
 
@@ -208,6 +214,7 @@ export function createMissions(scene, world, hooks) {
   }
 
   function setState(index, stage, allDone) {
+    elapsed = 0;
     state.index = Math.max(0, Math.min(index, MISSIONS.length - 1));
     state.stage = stage || 0;
     state.allDone = !!allDone;
@@ -216,13 +223,29 @@ export function createMissions(scene, world, hooks) {
     placeBeacon();
   }
 
-  // v3 staging hook for the cover: jump to the late story (MISSION 6/8,
-  // PALM COURT PICKUP, second stage) so the cover shows progression, not
+  // v4: HUD countdown state — seconds left on the current mission's PAR
+  // time (never below 0), plus the PAR BONUS on offer. setTimer() lets the
+  // screenshot staging pin the clock (cover shows the full 2:40, not 2:38
+  // after two seconds of silent staging steps).
+  function timer() {
+    // Finished arc: no live mission, so no countdown and no PAR bonus —
+    // the HUD shows dashes instead of a stale 5:00 (v4 end-shot fix).
+    if (state.allDone) return { remaining: 0, parSeconds: 0, parBonus: 0, elapsed: 0 };
+    const m = current();
+    const par = m.par ? m.par.seconds : 0;
+    return { remaining: Math.max(0, par - elapsed), parSeconds: par, parBonus: m.par ? m.par.bonus : 0, elapsed };
+  }
+  function setTimer(seconds) {
+    elapsed = Math.max(0, seconds || 0);
+  }
+
+  // v4 staging hook for the cover: jump to the late story (MISSION 7/8,
+  // SUNSET GETAWAY, second stage) so the cover shows progression, not
   // the first job. Returns the staged mission for the dialog line.
   function setLateGame() {
     setState(COVER.missionIndex, COVER.missionStage, false);
     return current();
   }
 
-  return { state, update, interact, objective, reset, currentSpot, startMission, setState, setLateGame, current };
+  return { state, update, interact, objective, reset, currentSpot, startMission, setState, setLateGame, current, timer, setTimer };
 }

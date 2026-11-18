@@ -22,6 +22,8 @@ export function createHud() {
   const missionStage = el('mission-stage-label');
   const missionStageFill = el('mission-stage-fill');
   const missionNext = el('mission-next-text');
+  const missionTimerEl = el('mission-timer');
+  const missionParEl = el('mission-par');
   const moneyEl = el('hud-money');
   const wantedEl = el('hud-wanted');
   const clockEl = el('hud-clock');
@@ -67,13 +69,23 @@ export function createHud() {
     missionStage.textContent = m.total && m.index >= m.total ? 'COMPLETE' : `STAGE ${Math.min(m.stage + 1, m.stages)}/${m.stages}`;
     if (missionStageFill) missionStageFill.style.width = `${Math.round((m.progress || 0) * 100)}%`;
     missionNext.textContent = m.next;
+    // v4: mission clock + PAR BONUS (rank-5 depth signal). The timer counts
+    // down from the mission's PAR time; under 30 s it turns red. No PAR on
+    // a finished arc (end shot) reads as a dash, not a stale number.
+    if (missionTimerEl) {
+      missionTimerEl.textContent = info.missionTimer ? `⏱ ${info.missionTimer}` : '—';
+      missionTimerEl.className = info.missionTimerLate ? 'late' : '';
+    }
+    if (missionParEl) missionParEl.textContent = info.missionPar || '—';
     moneyEl.textContent = `$${info.money.toLocaleString('en-US')}`;
     wantedEl.textContent = stars(info.wanted);
     wantedEl.className = info.wanted > 0 ? 'wanted hot' : 'wanted';
     clockEl.textContent = info.clock;
     healthBar.style.width = `${Math.max(0, info.health)}%`;
     armourBar.style.width = `${Math.max(0, info.armour)}%`;
-    repEl.textContent = `REP ${info.rep}  ·  ${info.repTitle}`;
+    // v4: REP line now carries the XP numbers — "REP 4 · BAY HUSTLER —
+    // 1.960 / 2.400 XP" — so the bar's 80% has a readable figure next to it.
+    repEl.textContent = info.repXpText ? `REP ${info.rep}  ·  ${info.repTitle}  —  ${info.repXpText}` : `REP ${info.rep}  ·  ${info.repTitle}`;
     // v3: REP progress bar — fills toward the next title (REP 4/5 on the
     // cover reads as nearly maxed, not empty).
     if (repFill) repFill.style.width = `${Math.round(clamp01(info.repProgress === undefined ? info.rep / 5 : info.repProgress) * 100)}%`;

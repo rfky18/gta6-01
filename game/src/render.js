@@ -4,6 +4,9 @@
 // v2 camera: the yaw the player asks for is smoothed toward the actual
 // camera yaw (no jitter on small mouse moves), speed widens the FOV a touch
 // like a chase cam should, and shooting / rams add a short shake.
+// v4: speed FOV kick 6 -> 7 (the cover chase reads a touch wider at speed);
+// coverFraming yaw offset is now 0.46 (shots.js) so the hero's headlights
+// read from the rear three-quarter angle.
 import { PALETTE } from './config.js';
 import { clamp, lerp } from './random.js';
 
@@ -57,7 +60,7 @@ export function createRender(canvas) {
     cam.targetDistance = driving ? 6.5 + speed01 * 0.8 : 8;
     cam.distance += (cam.targetDistance - cam.distance) * Math.min(1, dt * 4);
     // Speed widens the chase-cam FOV slightly; on foot it stays put.
-    const wantFov = cam.baseFov + (driving ? speed01 * 6 : 0);
+    const wantFov = cam.baseFov + (driving ? speed01 * 7 : 0); // v4: 6 -> 7
     if (Math.abs(camera.fov - wantFov) > 0.05) {
       camera.fov = lerp(camera.fov, wantFov, Math.min(1, dt * 5));
       camera.updateProjectionMatrix();

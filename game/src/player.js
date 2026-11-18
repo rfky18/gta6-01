@@ -2,6 +2,7 @@
 // with camera-relative movement, gravity, and building collision.
 // v2: when armed, Dario carries the current gun in his right hand and raises
 // it while aiming; getting hit makes him flinch so damage reads on screen.
+// v4: no player change — the end shot still shows Dario on foot at REP 5.
 import { PLAYER } from './config.js';
 
 const THREE = window.THREE;

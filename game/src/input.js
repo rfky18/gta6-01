@@ -3,6 +3,7 @@
 // v2: left mouse = fire (held for auto weapons), right mouse = aim, keys
 // 1-4 pick the four guns (0 = fists), R = reload. Radio moved to T so R is
 // free for reload — the title screen lists the new keys.
+// v4: no input change — the timer / PAR / XP HUD additions need no new keys.
 export const ACTION_ENTER = 1;
 export const ACTION_PAUSE = 2;
 export const ACTION_JUMP = 4;

@@ -7,8 +7,10 @@
 //
 // v3: REP titles come from config.js (BAY HUSTLER at REP 4), the HUD gets a
 // REP progress value, and the siren hears the wanted level.
-import { STEP, GAME, WORLD, REP_TITLES } from './config.js';
-import { createRandom } from './random.js';
+// v4: the HUD also gets the XP numbers (REP_XP ladder) and the mission
+// timer + PAR BONUS from missions.timer().
+import { STEP, GAME, WORLD, REP_TITLES, REP_XP } from './config.js';
+import { createRandom, formatXp } from './random.js';
 import { createInput, ACTION_ENTER, ACTION_PAUSE, ACTION_JUMP, ACTION_INTERACT } from './input.js';
 import { createWorld } from './world.js';
 import { createPlayer } from './player.js';
@@ -129,6 +131,20 @@ function repTitle() {
 function repProgress() {
   if (state.rep >= 5) return 1;
   return Math.max(0, Math.min(1, state.rep / 5));
+}
+
+// v4: REP XP text for the HUD — "1.960 / 2.400 XP" at REP 4: the XP needed
+// to reach this level, over the XP needed for the next one (REP_XP ladder).
+function repXpText() {
+  const r = Math.max(0, Math.min(state.rep, REP_XP.length - 1));
+  const current = REP_XP[r];
+  const next = r + 1 < REP_XP.length ? REP_XP[r + 1] : current;
+  return `${formatXp(current)}/${formatXp(next)} XP`; // v4: no spaces around '/' so it fits one line under the minimap
+}
+
+function formatTimer(seconds) {
+  const s = Math.max(0, Math.ceil(seconds));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
 function setWanted(n) {
@@ -353,9 +369,13 @@ function step(dt, silent) {
 
 function pushHud(dt) {
   const pos = state.driving ? car.state : player.state;
+  const mt = missions.timer();
   hud.update({
     dt,
     mission: missions.objective(),
+    missionTimer: mt.parSeconds > 0 ? formatTimer(mt.remaining) : '',
+    missionTimerLate: mt.remaining <= 30 && mt.parSeconds > 0,
+    missionPar: mt.parBonus > 0 ? `PAR BONUS +$${mt.parBonus.toLocaleString('en-US')}` : '',
     missionStage: missions.state.stage,
     missionDone: missions.state.done,
     money: state.money,
@@ -366,6 +386,7 @@ function pushHud(dt) {
     rep: state.rep,
     repTitle: repTitle(),
     repProgress: repProgress(),
+    repXpText: repXpText(),
     x: pos.x,
     z: pos.z,
     street: streetName(pos.x, pos.z),

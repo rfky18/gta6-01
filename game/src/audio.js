@@ -1,7 +1,9 @@
 // Procedural WebAudio: engine hum, police siren, UI blips and a tiny synthwave
 // radio loop. No audio files — everything is synthesized, so it works offline.
 // v2: gunfire (per-weapon pitch), reload clicks, hit ticks, enemy-down and
-// explosion stingers for the combat missions. Also fixes the radio arpeggio
+// explosion stingers for the combat missions. v4: no audio change — the
+// mission timer + PAR BONUS are visual-only HUD, no new sound is needed.
+// Also fixes the radio arpeggio
 // index in v1, which computed `(noteIndex / 2) | 0 % arp.length` — the `%`
 // bound to the 0, so the arp never advanced past its second note.
 export function createAudio() {

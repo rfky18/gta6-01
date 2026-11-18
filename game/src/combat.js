@@ -2,6 +2,8 @@
 // One job: everything about fighting on foot — weapon state and ammo,
 // muzzle flash / tracer / impact effects, and enemies that chase, shoot
 // back, and duck for cover when hurt. The player never shoots from a car.
+// v4: no combat change — the combat shot is now staged at REP 4 (shots.js)
+// so the contact sheet stays consistent with the cover.
 import { WEAPONS, ENEMY } from './config.js';
 import { createRandom, shuffle, clamp } from './random.js';
 
