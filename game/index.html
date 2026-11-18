@@ -3,17 +3,151 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Block Dodger</title>
+<title>NEON DISTRICT: CITY OF CRIME — San Vega City</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #11141b; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a0b1e; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
   #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-  /* Read aloud, never shown: the status line screen readers announce. */
   #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .panel { background: rgba(12, 10, 26, 0.82); border: 1px solid rgba(255, 210, 62, 0.35); border-radius: 8px; color: #f2f1f5; box-shadow: 0 4px 18px rgba(0,0,0,0.45); }
+  #hud { position: fixed; inset: 0; pointer-events: none; display: none; z-index: 5; }
+  /* Mission panel, top-left */
+  #mission-panel { position: absolute; top: 14px; left: 14px; width: 330px; padding: 10px 14px; }
+  #mission-panel .chapter { color: #ffd23e; font-weight: 800; font-size: 12px; letter-spacing: 1px; }
+  #mission-title { font-size: 19px; font-weight: 800; margin: 2px 0 4px; }
+  #mission-objective { font-size: 14px; line-height: 1.35; color: #e8e4f0; }
+  #mission-stage { margin-top: 7px; height: 8px; background: #33364a; border-radius: 4px; overflow: hidden; font-size: 0; position: relative; }
+  #mission-stage::after { content: ""; display: block; height: 100%; width: 50%; background: #ffd23e; }
+  #mission-stage-label { position: absolute; right: 0; top: -15px; font-size: 11px; font-weight: 700; color: #ffd23e; }
+  #mission-next { margin-top: 6px; font-size: 12px; color: #9be8ff; }
+  #mission-next b { color: #ffd23e; }
+  /* Police response, left under mission */
+  #police-panel { position: absolute; top: 168px; left: 14px; width: 330px; padding: 9px 14px; display: none; }
+  #police-panel h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: 1px; color: #ff8a7a; }
+  #police-panel h3 span { float: right; color: #f2f1f5; }
+  .police-row { display: flex; justify-content: space-between; font-size: 13px; padding: 2px 0; }
+  .police-row .callsign { font-weight: 700; }
+  .police-row .state { color: #ffd23e; font-weight: 700; }
+  .police-row.dim { opacity: 0.75; }
+  /* Top-right: clock, money, wanted, weapon */
+  #top-right { position: absolute; top: 14px; right: 14px; text-align: right; }
+  #hud-clock { font-size: 13px; font-weight: 700; color: #ffd23e; background: rgba(12,10,26,0.82); border-radius: 6px; padding: 3px 10px; display: inline-block; }
+  #hud-money { font-size: 34px; font-weight: 900; color: #37ff8a; text-shadow: 0 2px 8px rgba(0,0,0,0.6); line-height: 1.05; }
+  .wanted { font-size: 26px; letter-spacing: 3px; color: #8b93a3; text-shadow: 0 2px 6px rgba(0,0,0,0.6); }
+  .wanted.hot { color: #ffd23e; }
+  #weapon-slot { margin-top: 6px; display: inline-block; padding: 6px 12px; font-size: 13px; font-weight: 700; }
+  #weapon-slot b { color: #ffd23e; }
+  /* Minimap, bottom-left */
+  #minimap-wrap { position: absolute; left: 14px; bottom: 14px; width: 200px; text-align: center; }
+  #minimap { border-radius: 50%; border: 3px solid rgba(255, 210, 62, 0.8); box-shadow: 0 4px 18px rgba(0,0,0,0.55); background: #23262e; }
+  #hud-district { font-size: 17px; font-weight: 800; color: #fff; text-shadow: 0 2px 6px #000; margin-top: 4px; }
+  #hud-street { font-size: 12px; color: #cfd3de; text-shadow: 0 1px 4px #000; }
+  #vitals { margin-top: 8px; text-align: left; }
+  .vital-row { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #fff; text-shadow: 0 1px 3px #000; }
+  .vital-bar { flex: 1; height: 7px; background: rgba(0,0,0,0.55); border-radius: 4px; overflow: hidden; }
+  .vital-bar i { display: block; height: 100%; }
+  #health-fill { background: #37ff8a; width: 100%; }
+  #armour-fill { background: #37b6ff; width: 50%; }
+  #hud-rep { font-size: 11px; font-weight: 700; color: #ffd23e; text-shadow: 0 1px 3px #000; margin-top: 4px; }
+  /* Speedometer, bottom-right */
+  #speedo { position: absolute; right: 14px; bottom: 14px; text-align: right; }
+  #hud-vehicle { font-size: 15px; font-weight: 800; color: #37e0ff; text-shadow: 0 2px 6px #000; }
+  #hud-speed { font-size: 56px; font-weight: 900; color: #fff; line-height: 0.95; text-shadow: 0 3px 10px #000; }
+  #hud-speed small { font-size: 16px; color: #cfd3de; }
+  #condition-wrap { width: 180px; margin-left: auto; height: 7px; background: rgba(0,0,0,0.55); border-radius: 4px; overflow: hidden; }
+  #hud-condition { display: block; height: 100%; background: #37ff8a; width: 100%; }
+  #hud-radio { margin-top: 6px; font-size: 12px; font-weight: 700; color: #ff8ad2; text-shadow: 0 1px 4px #000; }
+  /* Dialog, bottom-centre */
+  #dialog-box { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); width: 520px; max-width: 46vw; padding: 10px 14px; display: none; align-items: flex-start; gap: 12px; }
+  #dialog-portrait { width: 52px; height: 52px; flex: none; border-radius: 8px; background: linear-gradient(135deg, #ff2e88, #7a2eff); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 900; color: #fff; }
+  #dialog-name { color: #ff8ad2; font-weight: 800; font-size: 14px; }
+  #dialog-text { font-size: 14px; line-height: 1.4; color: #f2f1f5; }
+  /* Interact prompt + banner */
+  #hud-interact { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); font-size: 15px; font-weight: 800; color: #fff; background: rgba(12,10,26,0.85); border: 1px solid #ffd23e; border-radius: 6px; padding: 7px 14px; display: none; }
+  #hud-interact b { color: #ffd23e; }
+  #hud-banner { position: absolute; left: 50%; top: 34%; transform: translateX(-50%); font-size: 26px; font-weight: 900; letter-spacing: 1px; color: #ffd23e; text-shadow: 0 3px 12px #000; display: none; white-space: nowrap; }
+  /* Full screens */
+  .screen { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #fff; background: linear-gradient(180deg, rgba(26,8,30,0.55), rgba(26,8,30,0.88)); }
+  .screen h1 { font-size: 54px; margin: 0; letter-spacing: 2px; text-shadow: 0 0 24px #ff2e88, 0 4px 10px #000; }
+  .screen h1 span { color: #ffd23e; }
+  .screen h2 { font-size: 20px; font-weight: 600; color: #ffb8c6; margin: 8px 0 4px; }
+  .screen p { max-width: 560px; font-size: 15px; line-height: 1.5; color: #e8e4f0; }
+  .screen .controls { font-size: 13px; color: #9be8ff; line-height: 1.7; margin: 10px 0 18px; }
+  .screen button { pointer-events: auto; cursor: pointer; font-size: 17px; font-weight: 800; color: #1a0b1e; background: #ffd23e; border: none; border-radius: 8px; padding: 12px 28px; margin: 4px; }
+  .screen button.secondary { background: transparent; color: #ffd23e; border: 2px solid #ffd23e; }
+  #pause-screen, #busted-screen { display: none; }
 </style>
 </head>
 <body>
-<canvas id="game" aria-label="Block Dodger: move the paddle left and right to dodge falling blocks and catch coins"></canvas>
+<canvas id="game" aria-label="Neon District: City of Crime — drive and walk around San Vega City at sunset"></canvas>
 <p id="status" role="status" aria-live="polite"></p>
+<script src="./vendor/three.min.js"></script>
+
+<div id="hud">
+  <div id="mission-panel" class="panel">
+    <div class="chapter">CH 1 · FIRST NIGHT</div>
+    <div id="mission-title">MISSION 1/1 — FIRST NIGHT</div>
+    <div id="mission-objective">Ride to Palmera Pier — Nadia left a package there.</div>
+    <div id="mission-stage"><span id="mission-stage-label">STAGE 1/2</span></div>
+    <div id="mission-next"><b>NEXT</b> <span id="mission-next-text">Pick up the package</span></div>
+  </div>
+  <div id="police-panel" class="panel">
+    <h3>▸ SVPD RESPONSE <span>1 UNIT · CODE 1</span></h3>
+    <div id="police-list"></div>
+  </div>
+  <div id="top-right">
+    <div id="hud-clock">DAY 1 18:52</div>
+    <div id="hud-money">$250</div>
+    <div id="hud-wanted" class="wanted">☆☆☆☆☆</div>
+    <div id="weapon-slot" class="panel">FISTS <b>∞</b></div>
+  </div>
+  <div id="minimap-wrap">
+    <canvas id="minimap" width="200" height="200"></canvas>
+    <div id="hud-district">SAN VEGA CITY</div>
+    <div id="hud-street">Crown Avenue</div>
+    <div id="vitals">
+      <div class="vital-row">HP <div class="vital-bar"><i id="health-fill"></i></div></div>
+      <div class="vital-row">AR <div class="vital-bar"><i id="armour-fill"></i></div></div>
+    </div>
+    <div id="hud-rep">REP 0 · NOBODY</div>
+  </div>
+  <div id="speedo">
+    <div id="hud-vehicle">ON FOOT</div>
+    <div id="hud-speed"><span id="hud-speed-num">0</span> <small>KM/H</small></div>
+    <div id="condition-wrap"><i id="hud-condition"></i></div>
+    <div id="hud-radio">♪ NEON FM 101.3 — Sunset Static</div>
+  </div>
+  <div id="dialog-box" class="panel">
+    <div id="dialog-portrait">NC</div>
+    <div><div id="dialog-name">Nadia Cruz</div><div id="dialog-text"></div></div>
+  </div>
+  <div id="hud-interact"><b>[E]</b> <span id="interact-label">Enter vehicle</span></div>
+  <div id="hud-banner"></div>
+</div>
+
+<div id="title-screen" class="screen">
+  <h1>NEON DISTRICT<br><span>CITY OF CRIME</span></h1>
+  <h2>San Vega City · one long sunset · one first night</h2>
+  <p>Dario Cole just got out. Nadia Cruz has a package waiting at Palmera Pier and the whole
+  San Vega PD on speed dial. Walk the streets, steal a ride, lose the cops, bring the package home.</p>
+  <div class="controls">
+    WASD move / drive · SHIFT sprint · SPACE jump / handbrake · Mouse camera · E enter car / pick up · P pause · R radio
+  </div>
+  <button id="btn-start">START ENGINE</button>
+  <button id="btn-continue" class="secondary" style="display:none">CONTINUE</button>
+</div>
+
+<div id="pause-screen" class="screen">
+  <h1>PAUSED</h1>
+  <p>The city waits. Your progress is saved.</p>
+  <button id="btn-resume">RESUME</button>
+</div>
+
+<div id="busted-screen" class="screen">
+  <h1>BUSTED</h1>
+  <p>SVPD caught up with you. They took $100 and dropped you at the garage. The night is young.</p>
+  <button id="btn-busted">BACK ON THE STREETS</button>
+</div>
+
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>

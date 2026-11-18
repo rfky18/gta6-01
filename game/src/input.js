@@ -1,53 +1,105 @@
-// Keyboard and pointer input. Held keys give a steering direction; one-shot presses (start or
-// restart, pause) are queued as bit flags and taken once by the loop, so a press between two
-// frames is never lost and never counted twice.
-
-export const ACTION_CONFIRM = 1;
+// Keyboard + mouse input. One job: turn raw events into a stable per-frame state.
+// Mouse: pointer lock on canvas click; drag rotates when lock is unavailable.
+export const ACTION_ENTER = 1;
 export const ACTION_PAUSE = 2;
+export const ACTION_JUMP = 4;
+export const ACTION_INTERACT = 8;
 
-const LEFT = new Set(['ArrowLeft', 'KeyA']);
-const RIGHT = new Set(['ArrowRight', 'KeyD']);
-const CONFIRM = new Set(['Space', 'Enter']);
-const PAUSE = new Set(['KeyP', 'Escape']);
-
-export function createInput(target) {
-  let left = false;
-  let right = false;
+export function createInput(canvas) {
+  const keys = new Set();
   let actions = 0;
+  let lookDX = 0;
+  let lookDY = 0;
+  let dragging = false;
+  let lastX = 0;
+  let lastY = 0;
 
   window.addEventListener('keydown', (event) => {
-    if (LEFT.has(event.code)) left = true;
-    else if (RIGHT.has(event.code)) right = true;
-    else if (CONFIRM.has(event.code)) {
-      if (!event.repeat) actions |= ACTION_CONFIRM;
-    } else if (PAUSE.has(event.code)) {
-      if (!event.repeat) actions |= ACTION_PAUSE;
-    } else return;
-    event.preventDefault();
+    if (event.repeat) return;
+    keys.add(event.code);
+    if (event.code === 'Enter') actions |= ACTION_ENTER;
+    if (event.code === 'Escape' || event.code === 'KeyP') actions |= ACTION_PAUSE;
+    if (event.code === 'Space') actions |= ACTION_JUMP;
+    if (event.code === 'KeyE') actions |= ACTION_INTERACT;
+    if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) event.preventDefault();
   });
-  window.addEventListener('keyup', (event) => {
-    if (LEFT.has(event.code)) left = false;
-    else if (RIGHT.has(event.code)) right = false;
+  window.addEventListener('keyup', (event) => keys.delete(event.code));
+  window.addEventListener('blur', () => keys.clear());
+
+  canvas.addEventListener('click', () => {
+    if (document.pointerLockElement !== canvas) {
+      try {
+        canvas.requestPointerLock();
+      } catch {
+        // Pointer lock can be denied (headless, iframe): drag still works.
+      }
+    }
   });
-  // A key released while the tab is hidden never sends keyup: let go of everything on blur.
-  window.addEventListener('blur', () => {
-    left = false;
-    right = false;
+  document.addEventListener('mousemove', (event) => {
+    if (document.pointerLockElement === canvas) {
+      lookDX += event.movementX;
+      lookDY += event.movementY;
+    } else if (dragging) {
+      lookDX += event.clientX - lastX;
+      lookDY += event.clientY - lastY;
+      lastX = event.clientX;
+      lastY = event.clientY;
+    }
   });
-  target.addEventListener('pointerdown', () => {
-    actions |= ACTION_CONFIRM;
+  canvas.addEventListener('mousedown', (event) => {
+    dragging = true;
+    lastX = event.clientX;
+    lastY = event.clientY;
+  });
+  window.addEventListener('mouseup', () => {
+    dragging = false;
   });
 
   return {
-    /** -1 for left, 1 for right, 0 for neither or both. */
-    direction() {
-      return (right ? 1 : 0) - (left ? 1 : 0);
+    // Held movement keys, camera-relative: x = strafe right, y = forward.
+    move() {
+      let x = 0;
+      let y = 0;
+      if (keys.has('KeyW') || keys.has('ArrowUp')) y += 1;
+      if (keys.has('KeyS') || keys.has('ArrowDown')) y -= 1;
+      if (keys.has('KeyA') || keys.has('ArrowLeft')) x -= 1;
+      if (keys.has('KeyD') || keys.has('ArrowRight')) x += 1;
+      return { x, y };
     },
-    /** The one-shot presses since the last call, as ACTION_* flags. */
+    sprint() {
+      return keys.has('ShiftLeft') || keys.has('ShiftRight');
+    },
+    // Driving keys: y = throttle/brake, x = steer.
+    drive() {
+      let y = 0;
+      let x = 0;
+      if (keys.has('KeyW') || keys.has('ArrowUp')) y += 1;
+      if (keys.has('KeyS') || keys.has('ArrowDown')) y -= 1;
+      if (keys.has('KeyA') || keys.has('ArrowLeft')) x -= 1;
+      if (keys.has('KeyD') || keys.has('ArrowRight')) x += 1;
+      return { x, y, handbrake: keys.has('Space') };
+    },
+    radioToggle() {
+      return keys.has('KeyR');
+    },
+    takeLook() {
+      const dx = lookDX;
+      const dy = lookDY;
+      lookDX = 0;
+      lookDY = 0;
+      return { dx, dy };
+    },
     takeActions() {
       const taken = actions;
       actions = 0;
       return taken;
+    },
+    // Test / autopilot hook: pretend a key is held.
+    press(code) {
+      keys.add(code);
+    },
+    release(code) {
+      keys.delete(code);
     },
   };
 }

@@ -1,61 +1,71 @@
-// Every tuning number and colour in one place. The playfield is a fixed 1280x720 logical area;
-// the renderer scales it to the window, so no rule below depends on the screen size.
-
-export const FIELD = { width: 1280, height: 720, groundY: 664 };
-
-/** The simulation's fixed step, in seconds: 60 updates a second whatever the display's rate. */
+// NEON DISTRICT: CITY OF CRIME — shared constants for San Vega City.
+// One job: every tunable number in one place so the other modules agree.
 export const STEP = 1 / 60;
 
+export const WORLD = {
+  // Playable city spans x,z in [-240, 240]; the beach + ocean run east of x = 210.
+  half: 240,
+  beachX: 210,
+  oceanX: 236,
+  roadSpacing: 60,
+  roadWidth: 11,
+  // Roads sit on this grid (both axes).
+  roads: [-180, -120, -60, 0, 60, 120, 180],
+};
+
+export function districtAt(x, z) {
+  if (x >= 180) return 'PALMERA BEACH';
+  if (z >= 120 && z <= 180) return 'NEON MILE';
+  if (x >= -120 && x <= 120 && z >= -120 && z <= 120) return 'CROWN DISTRICT';
+  if (x < -120 && z < -120) return 'OLD HARBOUR';
+  return 'SAN VEGA CITY';
+}
+
 export const PLAYER = {
-  width: 72,
-  height: 24,
-  speed: 560,
-  invulnerable: 1.5,
+  walkSpeed: 6,
+  sprintSpeed: 10.5,
+  accel: 40,
+  jumpSpeed: 8.5,
+  gravity: -24,
+  radius: 0.6,
+  height: 1.8,
+  health: 100,
+  armour: 50,
 };
 
-export const LIVES = 3;
-
-export const BLOCK = {
-  minWidth: 40,
-  maxWidth: 110,
-  height: 36,
-  speed: 240,
-  speedPerLevel: 30,
-  speedJitter: 90,
-  interval: 0.55,
-  intervalScale: 0.88,
-  minInterval: 0.14,
-  dodgePoints: 1,
+export const CAR = {
+  accel: 16,
+  brake: 30,
+  reverseAccel: 10,
+  maxSpeed: 34,
+  maxReverse: 10,
+  steer: 1.9,
+  grip: 6,
+  handbrakeGrip: 1.2,
 };
 
-export const COIN = {
-  size: 24,
-  speed: 190,
-  speedPerLevel: 14,
-  interval: 1.4,
-  intervalJitter: 0.8,
-  points: 10,
+export const GAME = {
+  title: 'NEON DISTRICT: CITY OF CRIME',
+  city: 'San Vega City',
+  saveKey: 'neon-district-save-v1',
+  startMoney: 250,
+  missionReward: 500,
+  radioStation: 'NEON FM 101.3',
+  radioTrack: 'Sunset Static — Coral Ghosts',
+  playerName: 'Dario Cole',
+  fixerName: 'Nadia Cruz',
+  pdName: 'SVPD',
 };
 
-/** Seconds of play per level, and the last level: speeds and spawn rates stop growing there. */
-export const LEVEL = { seconds: 12, max: 12 };
-
-/** How many falling things can exist at once; the pool is allocated once, at boot. */
-export const POOL_SIZE = 64;
-
+// Sunset palette: golden hour over the coast.
 export const PALETTE = {
-  backdrop: '#11141b',
-  sky: '#1b1f2a',
-  ground: '#2a3040',
-  player: '#4fc3f7',
-  block: '#e5534b',
-  coin: '#f2c94c',
-  panel: '#252b38',
-  text: '#eef1f5',
-  muted: '#8b93a3',
+  sky: 0xff9e64,
+  fog: 0xf2a06b,
+  sun: 0xffc27a,
+  sunLight: 0xffb36b,
+  hemiSky: 0xffb8c6,
+  hemiGround: 0x5a4a7a,
+  ocean: 0x2e6f8e,
+  sand: 0xe8c98f,
+  asphalt: 0x23262e,
 };
-
-export const FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif';
-
-/** Where the best score is kept between visits (this browser only). */
-export const BEST_KEY = 'block-dodger.best';
