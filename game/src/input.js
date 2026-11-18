@@ -139,6 +139,11 @@ export function createInput(canvas) {
     release(code) {
       keys.delete(code);
     },
+    // v3 test hook: which keys are currently held (the cover-staging
+    // playtest asserts KeyW was held while the chase rolled forward).
+    held() {
+      return [...keys];
+    },
     // Test hook for the mouse buttons (0 = fire, 2 = aim).
     pressMouse(button) {
       if (button === 0) firing = true;

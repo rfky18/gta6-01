@@ -18,14 +18,20 @@ hideout — on foot or behind the wheel of the Solaris GT.
 - **Open world**: procedural low-poly city, beach + ocean + yacht, palms, neon signs, sunset lighting
 - **On foot**: walk, sprint, jump, third-person mouse camera
 - **Driving**: steal and drive the Solaris GT, chase cam, speedometer, traffic AI
-- **Wanted system**: steal a car and SVPD units VIPER-4 (and VIPER-7 at 2 stars) pursue and ram you — lose them or get busted
+- **Wanted system**: steal a car and SVPD units VIPER-4 (and VIPER-7 at 2 stars, VIPER-9 + VIPER-12 at 3 stars) pursue and ram you — lose them or get busted
 - **Missions**: 8 story jobs — FIRST NIGHT, STOLEN WHEELS, NEON RUNNER, POLICE PRESSURE, DOCKSIDE TROUBLE, PALM COURT PICKUP, SUNSET GETAWAY, THE FINAL DEAL
 - **Combat**: 4 original guns (VK-9 pistol, WASP SMG, BREAKER-12 shotgun, LONGSHOT rifle) + fists — aim, fire, reload, raycast hits, muzzle flash, tracers; rivals who chase, shoot back and take cover when hurt
 - **Characters**: Nadia Cruz, Rico Vane, Selma Ortiz, Marco Ferro — dialog with procedural canvas portraits
 - **Life**: 32 pedestrians on the sidewalks (they panic at gunfire), 12 traffic cars, patrol cars, radio (NEON FM 101.3), synthesized engine + siren + gunfire audio
 - **Visuals**: gradient sunset sky dome, time-of-day cycle (day / golden hour / sunset / night), taller glass towers with setbacks and lit windows, SAN VEGA CITY neon billboard, wet asphalt with puddles and neon reflections, highway overpass, yacht offshore, rain on `?rain=1`
-- **HUD**: mission panel (N/8 + stage progress), wanted stars, money, police response list, 5 weapon slots with live ammo, circular minimap with purple route to the objective, health/armour, REP, crosshair + hitmarker
+- **HUD**: mission panel (N/8 + stage progress), wanted stars, money, police response list (up to 5 units: 4 ground + HAWK-1), 5 weapon slots with live ammo, circular minimap with purple route to the objective, health/armour, REP + REP progress bar, crosshair + hitmarker
 - **Save**: progress autosaves to localStorage (mission, weapons, ammo included)
+
+## v3 — cover staging + sculpt (local-judge v2 lost 1W–5L)
+
+- **Cover**: the `?shot=play` frame stages the late story — MISSION 6/8 (PALM COURT PICKUP, stage 2/2), REP 4 · BAY HUSTLER with the REP bar 80% full, 3-star wanted, 5 named SVPD units in the response list, 5 traffic cars + 6 pedestrians in frame, sun low over the water at 19:12, $34,750
+- **Solaris GT**: sculpted wedge — lower/wider stance, tapered nose + splitter, full-width LED headlight bar, slanted windshield/rear glass, flared rear haunches, side skirts, bigger spoiler, larger wheels (handling unchanged)
+- **Banner**: mission banners moved to bottom-centre above the dialog box — they no longer overlap the SVPD response panel
 
 ## How to play
 

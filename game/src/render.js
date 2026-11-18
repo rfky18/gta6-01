@@ -5,7 +5,7 @@
 // camera yaw (no jitter on small mouse moves), speed widens the FOV a touch
 // like a chase cam should, and shooting / rams add a short shake.
 import { PALETTE } from './config.js';
-import { clamp } from './random.js';
+import { clamp, lerp } from './random.js';
 
 const THREE = window.THREE;
 
@@ -59,7 +59,7 @@ export function createRender(canvas) {
     // Speed widens the chase-cam FOV slightly; on foot it stays put.
     const wantFov = cam.baseFov + (driving ? speed01 * 6 : 0);
     if (Math.abs(camera.fov - wantFov) > 0.05) {
-      camera.fov += (wantFov - camera.fov) * Math.min(1, dt * 5);
+      camera.fov = lerp(camera.fov, wantFov, Math.min(1, dt * 5));
       camera.updateProjectionMatrix();
     }
     cam.trauma = Math.max(0, cam.trauma - dt * 1.8);
@@ -93,9 +93,21 @@ export function createRender(canvas) {
     return { x: dir.x, y: dir.y, z: dir.z };
   }
 
+  // v3 cover framing: three-quarter rear view with a wide FOV, applied
+  // immediately (the shot paints only twice, so the normal FOV lerp in
+  // update() would not get there in time). yawOffset swings the chase cam
+  // slightly to the side so the hero car reads as a car, not a flat box.
+  function coverFraming(yawOffset, fov) {
+    cam.yaw += yawOffset;
+    cam.targetYaw = cam.yaw;
+    cam.baseFov = fov;
+    camera.fov = fov + 3;
+    camera.updateProjectionMatrix();
+  }
+
   function render() {
     renderer.render(scene, camera);
   }
 
-  return { renderer, scene, camera, cam, update, snapBehind, render, resize, shake, aimDirection };
+  return { renderer, scene, camera, cam, update, snapBehind, render, resize, shake, aimDirection, coverFraming };
 }

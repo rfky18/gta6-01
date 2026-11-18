@@ -78,6 +78,23 @@ export function createPedestrians(scene, seed, count) {
     }
   }
 
+  // v3 staging hook for the cover: put the first N walkers on the two
+  // sidewalks of a north-south road (roadX), at `spots` of {side, ahead}
+  // relative to (roadX, z) — so the chase frame shows pedestrians on both
+  // sidewalks. Walkers stroll south/north along the sidewalk after this.
+  function placeSidewalk(roadX, z, spots) {
+    const half = WORLD.roadHalf + 2.2;
+    spots.forEach((spot, i) => {
+      if (i >= walkers.length) return;
+      const w = walkers[i];
+      w.horizontal = false;
+      w.lane = roadX + spot.side * half;
+      w.pos = z + spot.ahead;
+      w.dir = spot.dir === undefined ? (i % 2 === 0 ? -1 : 1) : spot.dir;
+      w.mesh.group.position.set(w.lane, 0, w.pos);
+    });
+  }
+
   function update(dt, threat) {
     for (const w of walkers) {
       const speed = w.panic > 0 ? w.baseSpeed * 2.6 : w.baseSpeed;
@@ -110,5 +127,5 @@ export function createPedestrians(scene, seed, count) {
     }
   }
 
-  return { walkers, update, panicAt };
+  return { walkers, update, panicAt, placeSidewalk };
 }

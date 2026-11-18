@@ -20,8 +20,9 @@
   #mission-stage-label { position: absolute; right: 0; top: -15px; font-size: 11px; font-weight: 700; color: #ffd23e; }
   #mission-next { margin-top: 6px; font-size: 12px; color: #9be8ff; }
   #mission-next b { color: #ffd23e; }
-  /* Police response, left under mission */
-  #police-panel { position: absolute; top: 168px; left: 14px; width: 330px; padding: 9px 14px; display: none; }
+  /* Police response, left under mission (v3: 5 rows at 3 stars, so the
+     panel starts a touch lower to clear the taller mission panel). */
+  #police-panel { position: absolute; top: 176px; left: 14px; width: 330px; padding: 9px 14px; display: none; }
   #police-panel h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: 1px; color: #ff8a7a; }
   #police-panel h3 span { float: right; color: #f2f1f5; }
   .police-row { display: flex; justify-content: space-between; font-size: 13px; padding: 2px 0; }
@@ -60,6 +61,9 @@
   #health-fill { background: #37ff8a; width: 100%; }
   #armour-fill { background: #37b6ff; width: 50%; }
   #hud-rep { font-size: 11px; font-weight: 700; color: #ffd23e; text-shadow: 0 1px 3px #000; margin-top: 4px; }
+  /* v3: REP progress bar under the REP title (fills toward the next title). */
+  #rep-bar { margin-top: 4px; height: 6px; background: rgba(0,0,0,0.55); border-radius: 3px; overflow: hidden; }
+  #rep-fill { display: block; height: 100%; background: #ffd23e; width: 0%; }
   /* Speedometer, bottom-right */
   #speedo { position: absolute; right: 14px; bottom: 14px; text-align: right; }
   #hud-vehicle { font-size: 15px; font-weight: 800; color: #37e0ff; text-shadow: 0 2px 6px #000; }
@@ -76,7 +80,12 @@
   /* Interact prompt + banner */
   #hud-interact { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); font-size: 15px; font-weight: 800; color: #fff; background: rgba(12,10,26,0.85); border: 1px solid #ffd23e; border-radius: 6px; padding: 7px 14px; display: none; }
   #hud-interact b { color: #ffd23e; }
-  #hud-banner { position: absolute; left: 50%; top: 34%; transform: translateX(-50%); font-size: 26px; font-weight: 900; letter-spacing: 1px; color: #ffd23e; text-shadow: 0 3px 12px #000; display: none; white-space: nowrap; }
+  /* v3: the banner sits BOTTOM-CENTRE above the dialog box, never over the
+     left panels — v2's top:34% banner overlapped the SVPD response panel
+     ("SPOTLIGHT" was covered) in the combat shot. Bottom-centre is clear
+     of the mission/police panels (left), minimap (bottom-left), speedo
+     (bottom-right) and crosshair (centre). */
+  #hud-banner { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); font-size: 22px; font-weight: 900; letter-spacing: 1px; color: #ffd23e; text-shadow: 0 3px 12px #000; background: rgba(12,10,26,0.85); border: 1px solid rgba(255,210,62,0.6); border-radius: 6px; padding: 8px 18px; display: none; white-space: nowrap; }
   /* Full screens */
   .screen { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #fff; background: linear-gradient(180deg, rgba(26,8,30,0.55), rgba(26,8,30,0.88)); }
   .screen h1 { font-size: 54px; margin: 0; letter-spacing: 2px; text-shadow: 0 0 24px #ff2e88, 0 4px 10px #000; }
@@ -121,6 +130,7 @@
       <div class="vital-row">AR <div class="vital-bar"><i id="armour-fill"></i></div></div>
     </div>
     <div id="hud-rep">REP 0 · NOBODY</div>
+    <div id="rep-bar"><i id="rep-fill"></i></div>
   </div>
   <div id="speedo">
     <div id="hud-vehicle">ON FOOT</div>

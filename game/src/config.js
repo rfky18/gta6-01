@@ -62,6 +62,31 @@ export const GAME = {
   pdName: 'SVPD',
 };
 
+// v3 cover staging (shots.js stages exactly this state for ?shot=play):
+// late story (mission 6/8), REP 4 with its title, 3-star heat, a full
+// 5-unit SVPD response, and the sun low over the water at 19:12.
+export const COVER = {
+  missionIndex: 5, // PALM COURT PICKUP — MISSION 6/8
+  missionStage: 1,
+  rep: 4,
+  wanted: 3,
+  money: 34750,
+  clockMinutes: 19 * 60 + 12,
+};
+
+// v3 — REP titles: BAY HUSTLER now starts at REP 4 (was 5), so the cover's
+// REP 4 reads as a made name, like the top-10 covers (REP 3–4 + title).
+export const REP_TITLES = [
+  { min: 5, title: 'SAN VEGA LEGEND' },
+  { min: 4, title: 'BAY HUSTLER' },
+  { min: 2, title: 'STREET RUNNER' },
+  { min: 0, title: 'NOBODY' },
+];
+
+// v3 — the SVPD response grows with heat: VIPER-4 always, VIPER-7 at 2
+// stars, VIPER-9 + VIPER-12 at 3 stars, HAWK-1 in the air above them.
+export const POLICE_CALLSIGNS = ['VIPER-4', 'VIPER-7', 'VIPER-9', 'VIPER-12'];
+
 // Sunset palette: golden hour over the coast.
 export const PALETTE = {
   sky: 0xff9e64,

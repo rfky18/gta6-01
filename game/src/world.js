@@ -319,10 +319,12 @@ export function createWorld(scene, seed) {
 
   // Sun, fog, lights. The sun sits south-west so a southbound chase down
   // Ocean Boulevard sees it ahead-left, with the ferris wheel ahead-right.
+  // v3: the sun hangs LOWER (light y 95 -> 55) for a late-sunset cover —
+  // longer shadows, more sky glow over the water.
   scene.background = new THREE.Color(PALETTE.sky);
   scene.fog = new THREE.Fog(PALETTE.fog, 120, 700);
   const sun = new THREE.DirectionalLight(PALETTE.sunLight, 1.25);
-  sun.position.set(60, 95, -330);
+  sun.position.set(60, 55, -330);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.camera.left = -160;
@@ -338,11 +340,15 @@ export function createWorld(scene, seed) {
 
   // Sun disc sprite, big over the southern horizon + wide halo. Hard-edged
   // core so the disc reads as a disc against the pink sky, not a soft wash.
+  // v3.1: a SHARP core edge (solid to 0.55, gone by 0.72) — the v3 gradient
+  // faded too gently and ACES washed the disc into a glow blob.
   const sunTex = canvasTexture(128, 128, (g) => {
     const grad = g.createRadialGradient(64, 64, 4, 64, 64, 62);
     grad.addColorStop(0, 'rgba(255,243,200,1)');
     grad.addColorStop(0.45, 'rgba(255,179,71,1)');
-    grad.addColorStop(0.7, 'rgba(255,122,60,0.6)');
+    grad.addColorStop(0.55, 'rgba(255,150,60,1)');
+    grad.addColorStop(0.62, 'rgba(255,122,60,0.85)');
+    grad.addColorStop(0.72, 'rgba(255,150,80,0)');
     grad.addColorStop(1, 'rgba(255,150,80,0)');
     g.fillStyle = grad;
     g.fillRect(0, 0, 128, 128);
@@ -350,18 +356,22 @@ export function createWorld(scene, seed) {
   // Sun disc + halo as MESHES, not sprites: sprites did not render in the
   // screenshot stack (verified by aiming the camera straight at one — empty
   // sky), while meshes always do. The disc faces the boulevard.
+  // v3: disc lowered (y 130 -> 92) so it sits just over the horizon water
+  // in the cover frame instead of high in the sky.
   const sunDisc = new THREE.Mesh(
     new THREE.CircleGeometry(80, 32),
     new THREE.MeshBasicMaterial({ map: sunTex, transparent: true, depthWrite: false, fog: false }),
   );
-  sunDisc.position.set(60, 130, -330);
+  sunDisc.position.set(60, 92, -330);
   sunDisc.lookAt(180, 10, 60);
   scene.add(sunDisc);
+  // v3.1: smaller, dimmer halo so the sun reads as a crisp disc, not a
+  // washed-out pale ellipse (v3 cover: the 150-radius halo drowned the core).
   const haloDisc = new THREE.Mesh(
-    new THREE.CircleGeometry(150, 32),
-    new THREE.MeshBasicMaterial({ map: sunTex, transparent: true, opacity: 0.4, depthWrite: false, fog: false }),
+    new THREE.CircleGeometry(110, 32),
+    new THREE.MeshBasicMaterial({ map: sunTex, transparent: true, opacity: 0.25, depthWrite: false, fog: false }),
   );
-  haloDisc.position.set(60, 130, -330);
+  haloDisc.position.set(60, 92, -330);
   haloDisc.lookAt(180, 10, 60);
   scene.add(haloDisc);
   animated.sunSprite = sunDisc;
@@ -738,7 +748,7 @@ export function createWorld(scene, seed) {
     const lampScale = p.lamp;
     for (const lm of lampMats) lm.color.setHex(0xffe9a0).multiplyScalar(Math.min(1.6, lampScale));
     sunDisc.material.opacity = phase === 'night' ? 0.15 : 1;
-    haloDisc.material.opacity = phase === 'night' ? 0.05 : 0.4;
+    haloDisc.material.opacity = phase === 'night' ? 0.05 : 0.25;
     return phase;
   }
   applyTimeOfDay(18 * 60 + 52);

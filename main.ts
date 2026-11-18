@@ -27,7 +27,10 @@ if (existsSync(join(here, 'screenshots'))) cpSync(join(here, 'screenshots'), joi
 // screenshots/ and dossier.json).
 // v2 entry: 8 story missions, 4 guns + combat AI, procedural character
 // portraits, time-of-day lighting and the wet-sunset Ocean Boulevard cover.
-const ENTRY_VERSION = 'v2 — 8 missions, combat, portraits, time-of-day';
+// v3 entry: late-story cover staging (MISSION 6/8, REP 4 BAY HUSTLER, 3-star
+// heat, 5-unit SVPD response), sculpted Solaris GT wedge, lower sun,
+// mission banner moved clear of the police panel.
+const ENTRY_VERSION = 'v3 — late-story cover, sculpted Solaris GT, banner fix';
 writeFileSync(
   join(out, 'dossier.json'),
   buildDossier(out, {

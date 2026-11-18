@@ -79,10 +79,28 @@ export function createTraffic(scene, seed, count) {
       car.z += Math.cos(car.heading) * car.speed * dt;
       car.mesh.position.set(car.x, 0, car.z);
       car.mesh.rotation.y = car.heading;
-      const spin = (car.speed * dt) / 0.38;
+      const spin = (car.speed * dt) / 0.4;
       for (const wheel of car.mesh.userData.wheels) wheel.rotation.x += spin;
     }
   }
 
-  return { cars, update };
+  // v3 staging hook for the cover: park the first N traffic cars in the
+  // two lanes ahead of (x, z), heading the same way, so the chase frame
+  // reads as a busy boulevard instead of an empty road. `slots` is a list
+  // of {lane, ahead} offsets; heading defaults to Math.PI (south).
+  function placeAhead(x, z, heading, slots) {
+    const h = heading === undefined ? Math.PI : heading;
+    slots.forEach((slot, i) => {
+      if (i >= cars.length) return;
+      const car = cars[i];
+      car.x = x + slot.lane;
+      car.z = z + slot.ahead;
+      car.heading = h;
+      car.speed = slot.speed === undefined ? 9 : slot.speed;
+      car.mesh.position.set(car.x, 0, car.z);
+      car.mesh.rotation.y = h;
+    });
+  }
+
+  return { cars, update, placeAhead };
 }

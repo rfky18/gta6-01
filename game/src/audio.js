@@ -112,10 +112,12 @@ export function createAudio() {
       engineGain.gain.setTargetAtTime(target, ctx.currentTime, 0.1);
       engineOsc.frequency.setTargetAtTime(52 + speed01 * 130, ctx.currentTime, 0.1);
     },
-    setSiren(on, time) {
+    setSiren(on, time, wanted) {
       if (!ctx || !sirenOsc || !sirenGain) return;
       sirenGain.gain.setTargetAtTime(on ? 0.035 : 0, ctx.currentTime, 0.2);
-      if (on) sirenOsc.frequency.setTargetAtTime(time % 1 < 0.5 ? 660 : 880, ctx.currentTime, 0.05);
+      // v3: at 3 stars the two-tone cycles faster — more units, more urgency.
+      const cycle = (wanted || 0) >= 3 ? 0.32 : 0.5;
+      if (on) sirenOsc.frequency.setTargetAtTime(time % (cycle * 2) < cycle ? 660 : 880, ctx.currentTime, 0.05);
     },
     pickup() {
       blip(880, 0.12, 'square', 0.08);

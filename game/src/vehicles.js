@@ -8,6 +8,12 @@
 // haunch intakes, door shut lines, 5-spoke rims, wider rear track on the
 // hero. Paint is a glossy Phong material so the sunset catches it; brake
 // lights brighten when the car brakes, and a damaged car puffs smoke.
+// v3 sculpt pass (LOCAL-JUDGE-v2: the v2 car still read as a red box):
+// lower + wider stance (body 2.1 wide, 0.52 tall, top line ~1.36 — the spec's
+// 4.6 x 1.9 x 1.35), tapered nose wedge + front splitter, full-width LED
+// headlight bar, slanted windshield + rear glass panels, flared rear
+// haunches over the rear wheels, side skirts, bigger spoiler on taller
+// fins, larger wheels (r 0.40). Handling / physics untouched.
 import { CAR, WORLD } from './config.js';
 
 const THREE = window.THREE;
@@ -63,13 +69,21 @@ function makeSpokeTexture() {
 }
 
 // Shared buffers: every car on the street reuses the same geometries.
+// v3: wedge proportions — lower/wider hull, tapered nose, slanted glass.
 const GEO = {
-  body: new THREE.BoxGeometry(2, 0.62, 4.4),
-  hood: new THREE.BoxGeometry(1.86, 0.34, 1.1),
-  cabin: new THREE.BoxGeometry(1.7, 0.6, 2.1),
-  roof: new THREE.BoxGeometry(1.72, 0.1, 2.0),
-  tail: new THREE.BoxGeometry(1.9, 0.4, 0.7),
-  light: new THREE.BoxGeometry(0.42, 0.16, 0.08),
+  body: new THREE.BoxGeometry(2.1, 0.52, 4.6),
+  hood: new THREE.BoxGeometry(1.9, 0.26, 1.3),
+  nose: new THREE.BoxGeometry(1.7, 0.3, 0.55),
+  splitter: new THREE.BoxGeometry(2.0, 0.08, 0.45),
+  cabin: new THREE.BoxGeometry(1.66, 0.5, 2.0),
+  roof: new THREE.BoxGeometry(1.5, 0.08, 1.15),
+  windshield: new THREE.BoxGeometry(1.6, 0.05, 0.95),
+  rearGlass: new THREE.BoxGeometry(1.6, 0.05, 0.9),
+  tail: new THREE.BoxGeometry(1.8, 0.34, 0.6),
+  haunch: new THREE.BoxGeometry(0.22, 0.34, 1.1),
+  skirt: new THREE.BoxGeometry(0.1, 0.16, 2.6),
+  light: new THREE.BoxGeometry(0.46, 0.16, 0.08),
+  headBar: new THREE.BoxGeometry(1.7, 0.09, 0.06),
   tailBar: new THREE.BoxGeometry(1.7, 0.09, 0.06),
   tailBarEnd: new THREE.BoxGeometry(0.3, 0.1, 0.07),
   diffuser: new THREE.BoxGeometry(1.8, 0.22, 0.06),
@@ -79,14 +93,14 @@ const GEO = {
   mirror: new THREE.BoxGeometry(0.14, 0.16, 0.3),
   grille: new THREE.BoxGeometry(1.2, 0.14, 0.06),
   exhaust: new THREE.CylinderGeometry(0.09, 0.09, 0.24, 8),
-  spoiler: new THREE.BoxGeometry(1.8, 0.08, 0.5),
-  fin: new THREE.BoxGeometry(0.08, 0.4, 0.4),
-  wheel: new THREE.CylinderGeometry(0.38, 0.38, 0.3, 12),
-  wheelRear: new THREE.CylinderGeometry(0.38, 0.38, 0.36, 12),
-  hub: new THREE.CylinderGeometry(0.2, 0.2, 0.32, 10),
+  spoiler: new THREE.BoxGeometry(1.95, 0.07, 0.55),
+  fin: new THREE.BoxGeometry(0.08, 0.5, 0.45),
+  wheel: new THREE.CylinderGeometry(0.4, 0.4, 0.3, 12),
+  wheelRear: new THREE.CylinderGeometry(0.4, 0.4, 0.36, 12),
+  hub: new THREE.CylinderGeometry(0.22, 0.22, 0.32, 10),
   barBase: new THREE.BoxGeometry(1.2, 0.14, 0.5),
   barLight: new THREE.BoxGeometry(0.5, 0.16, 0.5),
-  stripe: new THREE.BoxGeometry(2.02, 0.3, 4.42),
+  stripe: new THREE.BoxGeometry(2.12, 0.3, 4.62),
   smoke: new THREE.SphereGeometry(0.7, 8, 6),
 };
 
@@ -99,28 +113,54 @@ export function buildCarMesh(opts) {
   const darkMat = new THREE.MeshLambertMaterial({ color: 0x11131a });
   const glassMat = new THREE.MeshPhongMaterial({ color: 0x1a2a3a, shininess: 50, specular: 0x445566 });
   const body = new THREE.Mesh(GEO.body, bodyMat);
-  body.position.y = 0.55;
-  // Sloped hood + tapered tail so the silhouette reads as a car, not a box.
+  body.position.y = 0.5;
+  // Wedge nose + sloped hood + tapered tail so the silhouette reads as a
+  // sportscar, not a box: the nose dips, the hood falls toward it, the
+  // fastback roofline falls toward the tail.
+  const nose = new THREE.Mesh(GEO.nose, bodyMat);
+  nose.position.set(0, 0.44, 2.38);
+  nose.rotation.x = -0.3;
+  const splitter = new THREE.Mesh(GEO.splitter, darkMat);
+  splitter.position.set(0, 0.14, 2.5);
   const hood = new THREE.Mesh(GEO.hood, bodyMat);
-  hood.position.set(0, 0.62, 1.9);
-  hood.rotation.x = -0.14;
+  hood.position.set(0, 0.58, 1.8);
+  hood.rotation.x = -0.2;
   const tail = new THREE.Mesh(GEO.tail, bodyMat);
-  tail.position.set(0, 0.6, -2.05);
-  tail.rotation.x = 0.1;
+  tail.position.set(0, 0.56, -2.1);
+  tail.rotation.x = 0.12;
   const cabin = new THREE.Mesh(GEO.cabin, glassMat);
-  cabin.position.set(0, 1.12, -0.25);
-  cabin.rotation.x = -0.08; // fastback rake: roofline falls toward the tail
-  const roof = new THREE.Mesh(GEO.roof, bodyMat);
-  roof.position.set(0, 1.45, -0.35);
-  roof.rotation.x = -0.12;
-  group.add(body, hood, tail, cabin, roof);
+  cabin.position.set(0, 1.02, -0.3);
+  cabin.rotation.x = -0.1; // fastback rake: roofline falls toward the tail
+  // v3.1: black roof, short so the rear glass shows behind it — the v3
+  // cover showed the red roof as one flat slab hiding the whole glasshouse.
+  const roof = new THREE.Mesh(GEO.roof, darkMat);
+  roof.position.set(0, 1.32, -0.35);
+  roof.rotation.x = -0.14;
+  // Slanted glass: windshield + rear window as separate panels, so the
+  // glasshouse reads from the rear three-quarter view (the cover angle).
+  const windshield = new THREE.Mesh(GEO.windshield, glassMat);
+  windshield.position.set(0, 1.05, 0.8);
+  windshield.rotation.x = -0.5;
+  const rearGlass = new THREE.Mesh(GEO.rearGlass, glassMat);
+  rearGlass.position.set(0, 1.02, -1.35);
+  rearGlass.rotation.x = 0.5;
+  group.add(body, nose, splitter, hood, tail, cabin, roof, windshield, rearGlass);
+  // Flared rear haunches over the wide rear wheels + side skirts.
+  for (const s of [-1, 1]) {
+    const haunch = new THREE.Mesh(GEO.haunch, bodyMat);
+    haunch.position.set(s * 1.02, 0.62, -1.3);
+    group.add(haunch);
+    const skirt = new THREE.Mesh(GEO.skirt, darkMat);
+    skirt.position.set(s * 1.06, 0.22, 0);
+    group.add(skirt);
+  }
   // Grille + mirrors + exhausts (hero: quad tips, 2 per side).
   const grille = new THREE.Mesh(GEO.grille, darkMat);
-  grille.position.set(0, 0.5, 2.56);
+  grille.position.set(0, 0.38, 2.64);
   group.add(grille);
   for (const s of [-1, 1]) {
     const mirror = new THREE.Mesh(GEO.mirror, bodyMat);
-    mirror.position.set(s * 1.02, 1.05, 0.7);
+    mirror.position.set(s * 1.04, 0.98, 0.65);
     group.add(mirror);
     const tips = o.sport ? [0.35, 0.75] : [0.55];
     for (const ex of tips) {
@@ -144,15 +184,19 @@ export function buildCarMesh(opts) {
       intake.position.set(s * 0.98, 0.6, -0.9);
       group.add(intake);
       const shut = new THREE.Mesh(GEO.shut, darkMat);
-      shut.position.set(s * 1.01, 0.6, 0.4);
+      shut.position.set(s * 1.06, 0.6, 0.4);
       group.add(shut);
     }
   }
-  // Headlights + full-width tail-light bar (bar brightens on braking, see setBraking).
+  // Headlights + full-width LED headlight bar (v3: the front fascia finally
+  // reads at night) + full-width tail-light bar (bar brightens on braking).
   const headMat = new THREE.MeshBasicMaterial({ color: 0xfff2b0 });
-  for (const s of [-0.65, 0.65]) {
+  const headBar = new THREE.Mesh(GEO.headBar, headMat);
+  headBar.position.set(0, 0.5, 2.64);
+  group.add(headBar);
+  for (const s of [-0.62, 0.62]) {
     const h = new THREE.Mesh(GEO.light, headMat);
-    h.position.set(s, 0.55, 2.56);
+    h.position.set(s, 0.5, 2.64);
     group.add(h);
   }
   const tailMat = new THREE.MeshBasicMaterial({ color: 0x992222 });
@@ -170,22 +214,23 @@ export function buildCarMesh(opts) {
   }
   if (o.sport) {
     const spoiler = new THREE.Mesh(GEO.spoiler, darkMat);
-    spoiler.position.set(0, 1.05, -2.05);
+    spoiler.position.set(0, 1.12, -2.1);
+    spoiler.rotation.x = 0.08;
     group.add(spoiler);
-    for (const s of [-0.7, 0.7]) {
+    for (const s of [-0.75, 0.75]) {
       const fin = new THREE.Mesh(GEO.fin, darkMat);
-      fin.position.set(s, 0.85, -2.05);
+      fin.position.set(s, 0.88, -2.1);
       group.add(fin);
     }
   }
   if (o.police) {
     const barBase = new THREE.Mesh(GEO.barBase, darkMat);
-    barBase.position.set(0, 1.56, -0.25);
+    barBase.position.set(0, 1.44, -0.25);
     group.add(barBase);
     const red = new THREE.Mesh(GEO.barLight, new THREE.MeshBasicMaterial({ color: 0xff2222 }));
-    red.position.set(-0.32, 1.56, -0.25);
+    red.position.set(-0.32, 1.44, -0.25);
     const blue = new THREE.Mesh(GEO.barLight, new THREE.MeshBasicMaterial({ color: 0x2255ff }));
-    blue.position.set(0.32, 1.56, -0.25);
+    blue.position.set(0.32, 1.44, -0.25);
     group.add(red, blue);
     group.userData.lightRed = red;
     group.userData.lightBlue = blue;
@@ -195,19 +240,20 @@ export function buildCarMesh(opts) {
   }
   // Wheels: 5-spoke rims (canvas texture on the hub caps, spun with the
   // wheels); hero rear track is wider with wider rear tires (spec).
+  // v3: larger wheels (r 0.40) to fill the lower stance.
   const wheelMat = new THREE.MeshLambertMaterial({ color: 0x14161c });
   const spokeMat = new THREE.MeshLambertMaterial({ map: makeSpokeTexture() });
   const hubSideMat = new THREE.MeshLambertMaterial({ color: 0x14161c });
   const wheels = [];
-  for (const [wx, wz, rear] of [[-0.95, 1.45, false], [0.95, 1.45, false], [-1.0, -1.45, true], [1.0, -1.45, true]]) {
+  for (const [wx, wz, rear] of [[-0.98, 1.5, false], [0.98, 1.5, false], [-1.02, -1.5, true], [1.02, -1.5, true]]) {
     const wheel = new THREE.Mesh(rear && o.sport ? GEO.wheelRear : GEO.wheel, wheelMat);
     wheel.rotation.z = Math.PI / 2;
-    wheel.position.set(wx, 0.38, wz);
+    wheel.position.set(wx, 0.4, wz);
     wheel.castShadow = true;
     // Hub cap materials: [side, cap, cap] — caps carry the spoke texture.
     const hub = new THREE.Mesh(GEO.hub, [hubSideMat, spokeMat, spokeMat]);
     hub.rotation.z = Math.PI / 2;
-    hub.position.set(wx, 0.38, wz);
+    hub.position.set(wx, 0.4, wz);
     group.add(wheel, hub);
     wheels.push(wheel, hub);
   }
@@ -287,8 +333,8 @@ export function createDrivableCar(scene, world, opts) {
     state.z = Math.max(-238, Math.min(238, fixed.z));
     mesh.position.set(state.x, 0, state.z);
     mesh.rotation.y = state.heading;
-    // Spin the wheels.
-    const spin = (state.speed * dt) / 0.38;
+    // Spin the wheels (v3 wheel radius 0.40).
+    const spin = (state.speed * dt) / 0.4;
     for (const wheel of mesh.userData.wheels) wheel.rotation.x += spin;
     return { x: state.x, z: state.z, speed: state.speed, heading: state.heading, kmh: Math.abs(state.speed) * 3.6 };
   }

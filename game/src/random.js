@@ -40,6 +40,16 @@ export function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+// v3: clamp into 0..1 (HUD bars: REP progress, condition) and linear
+// interpolation (camera FOV smoothing in render.js).
+export function clamp01(value) {
+  return clamp(value, 0, 1);
+}
+
+export function lerp(a, b, t) {
+  return a + (b - a) * clamp01(t);
+}
+
 export function chance(rng, probability) {
   return rng() < probability;
 }

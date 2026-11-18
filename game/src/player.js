@@ -67,6 +67,14 @@ export function createPlayer(scene, world) {
     mesh.group.rotation.y = state.heading;
   }
 
+  // v3 staging helper: turn Dario to face a point (the combat shot aims
+  // him at Ferro's crew) without recomputing atan2 at the call site.
+  function lookAt(x, z) {
+    state.heading = Math.atan2(x - state.x, z - state.z);
+    mesh.group.rotation.y = state.heading;
+    return state.heading;
+  }
+
   // Show / hide the gun in Dario's hand (slot 0 = fists, no gun).
   function setArmed(armed, aiming) {
     state.armed = !!armed;
@@ -133,5 +141,5 @@ export function createPlayer(scene, world) {
     return { x: state.x, z: state.z, y: state.y, speed: state.speed, heading: state.heading };
   }
 
-  return { state, place, update, setArmed, flinch, mesh: mesh.group };
+  return { state, place, lookAt, update, setArmed, flinch, mesh: mesh.group };
 }

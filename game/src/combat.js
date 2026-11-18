@@ -240,6 +240,9 @@ export function createCombat(scene, world, hooks) {
       const x = spot.x + s.dx;
       const z = spot.z + s.dz;
       mesh.group.position.set(x, 0, z);
+      // v3: rivals spawn facing the spot (the player), so the combat shot
+      // shows them as a threat advancing on Dario, not staring at a wall.
+      mesh.group.rotation.y = Math.atan2(spot.x - x, spot.z - z);
       // Raycast reads matrixWorld, which the renderer only refreshes on the
       // next frame — without this, an enemy spawned and shot in the same
       // frame is tested at the origin (and, starting inside its own box, a

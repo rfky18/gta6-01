@@ -7,8 +7,12 @@
 // stage progress bar, the full police response list (VIPER-4, VIPER-7,
 // HAWK-1), a purple minimap route to the mission marker, and a crosshair
 // with a hitmarker for on-foot combat.
+// v3: the response list grows to 5 rows at 3 stars (VIPER-9, VIPER-12 +
+// HAWK-1), REP gets a progress bar under its title, and dialog portraits
+// render at 104 px (2x the 52 px display size) so the cover dialog is crisp.
 import { GAME, WORLD, districtAt } from './config.js';
 import { portraitDataURI } from './portraits.js';
+import { clamp01 } from './random.js';
 
 export function createHud() {
   const el = (id) => document.getElementById(id);
@@ -24,6 +28,7 @@ export function createHud() {
   const healthBar = el('health-fill');
   const armourBar = el('armour-fill');
   const repEl = el('hud-rep');
+  const repFill = el('rep-fill');
   const districtEl = el('hud-district');
   const streetEl = el('hud-street');
   const speedEl = el('hud-speed-num');
@@ -69,6 +74,9 @@ export function createHud() {
     healthBar.style.width = `${Math.max(0, info.health)}%`;
     armourBar.style.width = `${Math.max(0, info.armour)}%`;
     repEl.textContent = `REP ${info.rep}  ·  ${info.repTitle}`;
+    // v3: REP progress bar — fills toward the next title (REP 4/5 on the
+    // cover reads as nearly maxed, not empty).
+    if (repFill) repFill.style.width = `${Math.round(clamp01(info.repProgress === undefined ? info.rep / 5 : info.repProgress) * 100)}%`;
     districtEl.textContent = districtAt(info.x, info.z);
     streetEl.textContent = info.street;
     speedEl.textContent = String(Math.round(info.kmh));
@@ -199,7 +207,7 @@ export function createHud() {
     dialogName.textContent = speaker;
     dialogText.textContent = text;
     if (dialogPortrait) {
-      dialogPortrait.src = portraitDataURI(speaker);
+      dialogPortrait.src = portraitDataURI(speaker, 104);
       dialogPortrait.alt = `${speaker} portrait`;
     }
     dialogBox.style.display = 'flex';

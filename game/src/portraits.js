@@ -118,6 +118,11 @@ export function portraitDataURI(name, size) {
 }
 
 // Pre-draw every named portrait once so the first dialog shows instantly.
+// v3: also warm the 104 px size hud.js actually displays (2x the 52 px
+// dialog image), so the cover dialog portrait is crisp, not upscaled.
 export function warmPortraits() {
-  for (const name of Object.keys(CHARACTERS)) portraitDataURI(name);
+  for (const name of Object.keys(CHARACTERS)) {
+    portraitDataURI(name);
+    portraitDataURI(name, 104);
+  }
 }

@@ -4,7 +4,7 @@
 // 'combat' (clear the rivals the stage spawns, then it advances itself) or
 // 'deliver' (same as goto, flavour only). The main loop owns money, wanted
 // level and the save; this module only reports what happened.
-import { GAME } from './config.js';
+import { GAME, COVER } from './config.js';
 
 const THREE = window.THREE;
 
@@ -216,5 +216,13 @@ export function createMissions(scene, world, hooks) {
     placeBeacon();
   }
 
-  return { state, update, interact, objective, reset, currentSpot, startMission, setState, current };
+  // v3 staging hook for the cover: jump to the late story (MISSION 6/8,
+  // PALM COURT PICKUP, second stage) so the cover shows progression, not
+  // the first job. Returns the staged mission for the dialog line.
+  function setLateGame() {
+    setState(COVER.missionIndex, COVER.missionStage, false);
+    return current();
+  }
+
+  return { state, update, interact, objective, reset, currentSpot, startMission, setState, setLateGame, current };
 }

@@ -4,7 +4,10 @@
 // ?seed=N fixes the city layout. ?rain=1 turns on the rain. ?shot=start|play|end|street|combat stages that
 // scene instead of running the loop, paints it twice and sets
 // window.__shotReady for a screenshot.
-import { STEP, GAME, WORLD } from './config.js';
+//
+// v3: REP titles come from config.js (BAY HUSTLER at REP 4), the HUD gets a
+// REP progress value, and the siren hears the wanted level.
+import { STEP, GAME, WORLD, REP_TITLES } from './config.js';
 import { createRandom } from './random.js';
 import { createInput, ACTION_ENTER, ACTION_PAUSE, ACTION_JUMP, ACTION_INTERACT } from './input.js';
 import { createWorld } from './world.js';
@@ -116,9 +119,16 @@ function streetName(x, z) {
 }
 
 function repTitle() {
-  if (state.rep >= 5) return 'BAY HUSTLER';
-  if (state.rep >= 2) return 'STREET RUNNER';
+  for (const t of REP_TITLES) {
+    if (state.rep >= t.min) return t.title;
+  }
   return 'NOBODY';
+}
+
+// REP progress toward the next title (0..1): REP 4 of 5 reads 80% full.
+function repProgress() {
+  if (state.rep >= 5) return 1;
+  return Math.max(0, Math.min(1, state.rep / 5));
 }
 
 function setWanted(n) {
@@ -334,7 +344,7 @@ function step(dt, silent) {
     if (!silent) {
       const speed01 = Math.min(1, Math.abs(car.state.speed) / 34);
       audio.setEngine(state.driving ? speed01 : 0, state.driving);
-      audio.setSiren(state.wanted > 0 && policeInfo.distance < 120, state.time);
+      audio.setSiren(state.wanted > 0 && policeInfo.distance < 120, state.time, state.wanted);
       render.update(dt, look, { x: target.x, y: target.y || 0, z: target.z }, state.driving, speed01);
       pushHud(dt);
     }
@@ -355,6 +365,7 @@ function pushHud(dt) {
     armour: state.armour,
     rep: state.rep,
     repTitle: repTitle(),
+    repProgress: repProgress(),
     x: pos.x,
     z: pos.z,
     street: streetName(pos.x, pos.z),

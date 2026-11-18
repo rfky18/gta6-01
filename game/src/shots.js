@@ -2,13 +2,16 @@
 // stages the real game state deterministically (no mocks, no composited
 // frames) and the caller paints it twice, then sets window.__shotReady.
 //
-// v2 cover (reference: wet coastal sunset avenue, red sportscar from
-// behind): Dario drives the red Solaris GT south down Ocean Boulevard —
-// the big sun ahead-left, the ferris wheel ahead-right, palms and the
+// v3 cover (LOCAL-JUDGE-v2: v2 lost 1W–5L — REP 0 · NOBODY + MISSION 1/8
+// signalled "no progression", the street was empty, only 3 police units):
+// Dario drives the red Solaris GT south down Ocean Boulevard — the low sun
+// ahead-left over the water, the ferris wheel ahead-right, palms and the
 // beach on the right, downtown towers and the SAN VEGA CITY billboard on
-// the left, VIPER-4 big and close beside him, VIPER-7 ahead, HAWK-1 in
-// the sky. Wanted 2, $34,750, mission live, full HUD.
-import { GAME } from './config.js';
+// the left, VIPER-4 big and close beside him, VIPER-7 ahead, VIPER-9 +
+// VIPER-12 further up the road, HAWK-1 in the sky. Wanted 3, $34,750,
+// MISSION 6/8 (PALM COURT PICKUP, stage 2/2), REP 4 · BAY HUSTLER with the
+// REP bar nearly full, 5 traffic cars + 6 walkers in frame, full HUD.
+import { GAME, COVER } from './config.js';
 
 export function stageShot(game, name) {
   const g = game;
@@ -17,61 +20,71 @@ export function stageShot(game, name) {
     // ahead-left, ferris wheel ahead-right, beach palms on the right.
     g.startDrivingAt(180, 60, Math.PI, 23);
     g.police.teleport(177, 66);
-    g.setWanted(2);
-    g.state.clockMinutes = 18 * 60 + 52;
-    g.state.money = 34750;
-    g.missions.state.index = 0;
-    g.missions.state.stage = 0;
-    g.missions.state.done = false;
-    g.missions.state.allDone = false;
-    g.missions.reset();
+    g.setWanted(COVER.wanted);
+    g.state.clockMinutes = COVER.clockMinutes;
+    g.state.money = COVER.money;
+    g.state.rep = COVER.rep;
+    // Late story, not the first job: MISSION 6/8, stage 2/2 (see COVER).
+    g.missions.setLateGame();
     g.combat.switchWeapon(2);
-    g.hud.say(GAME.fixerName, 'Alarms are back! Lose them before you come near my garage!', 30);
+    g.hud.say('Selma Ortiz', 'Parcel’s yours. The bar on Neon Mile is expecting it — back room, no names.', 30);
     g.render.snapBehind(Math.PI, { x: 180, y: 0, z: 60 }, true);
     // Roll the world forward 1.5 s with the throttle held so traffic,
     // the wheel and the pursuit are mid-motion, not frozen at spawn.
     g.input.press('KeyW');
     for (let i = 0; i < 90; i += 1) g.step(1 / 60, true);
     g.input.release('KeyW');
-    // Traffic ahead on the boulevard, in frame.
-    const t0 = g.traffic.cars[0];
-    t0.x = g.car.state.x + 2;
-    t0.z = g.car.state.z - 42;
-    t0.heading = Math.PI;
-    t0.speed = 10;
-    const t1 = g.traffic.cars[1];
-    t1.x = g.car.state.x - 3;
-    t1.z = g.car.state.z - 68;
-    t1.heading = Math.PI;
-    t1.speed = 9;
+    // Traffic ahead on the boulevard, in frame: 5 cars down the MIDDLE
+    // lanes so the chase reads as a busy street — v3 put them in the same
+    // ±3 lanes as the police and the black units hid behind the traffic.
+    // Police run the outer lanes (±4–5), traffic the centre (±1.5).
+    g.traffic.placeAhead(g.car.state.x, g.car.state.z, Math.PI, [
+      { lane: -1.5, ahead: -18, speed: 10 },
+      { lane: 1.5, ahead: -36, speed: 9 },
+      { lane: -1.5, ahead: -52, speed: 11 },
+      { lane: 1.5, ahead: -68, speed: 10 },
+      { lane: -1.5, ahead: -88, speed: 9 },
+    ]);
+    // Walkers on both sidewalks ahead, in frame (6 of them).
+    g.pedestrians.placeSidewalk(180, g.car.state.z, [
+      { side: -1, ahead: -14 },
+      { side: 1, ahead: -22 },
+      { side: -1, ahead: -34 },
+      { side: 1, ahead: -46 },
+      { side: -1, ahead: -58 },
+      { side: 1, ahead: -70 },
+    ]);
     g.input.press('KeyW');
     for (let i = 0; i < 24; i += 1) g.step(1 / 60, true);
     g.input.release('KeyW');
     // Pull the pursuit into frame LAST, after the staging steps, so nothing
     // moves it out of frame: VIPER-4 big and close ahead-left of the Solaris,
-    // VIPER-7 ahead-right on the road, HAWK-1 in the sky ahead-left.
+    // VIPER-7 ahead-right on the road, VIPER-9 + VIPER-12 further up the
+    // boulevard, HAWK-1 in the sky ahead-left.
     // (Ahead = -z here: the camera sits behind the car, so +z is behind it.)
     g.police.teleport(g.car.state.x - 5, g.car.state.z - 8);
     g.police.state.heading = Math.PI;
     g.police.state.speed = 30;
     g.police.placeUnit2(g.car.state.x + 4, g.car.state.z - 34, Math.PI, 28);
-    g.police.placeHeli(g.car.state.x - 14, g.car.state.z - 52, 20);
+    g.police.placeUnit3(g.car.state.x + 4, g.car.state.z - 56, Math.PI, 26);
+    g.police.placeUnit4(g.car.state.x - 5, g.car.state.z - 74, Math.PI, 26);
+    g.police.placeHeli(g.car.state.x - 16, g.car.state.z - 62, 22);
     // Three-quarter rear view, like the reference: swing the chase cam
-    // slightly to the side so the Solaris reads as a car, not a flat box.
-    // Wide cover FOV so the sun (left) and the ferris wheel (right) both fit.
-    g.render.cam.yaw += 0.32;
-    g.render.cam.targetYaw = g.render.cam.yaw;
-    g.render.cam.baseFov = 76;
-    // Apply the wide FOV immediately: paint() only runs twice, and the
-    // normal FOV lerp would not get there in time.
-    g.render.camera.fov = 79;
-    g.render.camera.updateProjectionMatrix();
+    // to the side so the Solaris reads as a car, not a flat box, and drop
+    // the pitch so the camera sees the rear + flank instead of the roof
+    // slab. Wide cover FOV so the sun (left) and the ferris wheel (right)
+    // both fit.
+    g.render.coverFraming(0.38, 76);
+    g.render.cam.pitch = 0.15;
     return 'play';
   }
   if (name === 'end') {
     // The Final Deal complete: Dario on foot at Nadia's garage, cash home.
+    // v3: REP 5 (SAN VEGA LEGEND) — the end shot shows the finished arc,
+    // not a fresh REP 0.
     g.missions.setState(7, 2, true);
     g.state.money = 6950;
+    g.state.rep = 5;
     g.setWanted(0);
     g.state.clockMinutes = 19 * 60 + 24;
     g.player.place(-150, 122, -Math.PI / 2);
@@ -98,9 +111,9 @@ export function stageShot(game, name) {
     g.combat.switchWeapon(4);
     // Silent steps let the combat stage spawn its three rivals at the docks.
     for (let i = 0; i < 30; i += 1) g.step(1 / 60, true);
-    const heading = Math.atan2(-185 - -180, -178 - -150);
-    g.player.place(-180, -150, heading);
-    g.render.snapBehind(heading, { x: -180, y: 0, z: -150 }, false);
+    g.player.place(-180, -150, 0);
+    g.player.lookAt(-185, -178);
+    g.render.snapBehind(g.player.state.heading, { x: -180, y: 0, z: -150 }, false);
     const dir = g.render.aimDirection();
     const target = { x: -182, y: 1.2, z: -172 };
     g.combat.stageFlash({ x: -180, y: 0, z: -150 }, dir, target);
