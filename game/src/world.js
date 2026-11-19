@@ -828,6 +828,31 @@ export function createWorld(scene, seed, assets) {
   hotelSign.position.set(168, 14, 90);
   hotelSign.rotation.y = -Math.PI / 2;
   scene.add(hotelSign);
+  // v9-neon: PALMERA BEACH neon sign on the boardwalk edge, facing the
+  // road so the cover reads the beach by name, not just by umbrellas —
+  // pink neon on dark glass, same makeSignTexture helper as the other
+  // signs, on two dark poles. R3 (dream-loop R2: screen projection put
+  // the sign at x 1385 — off-frame right and edge-on, because it faced
+  // -x while the chase camera looks down the road): moved to (210, -52),
+  // 45 m ahead of the camera so it lands mid-frame, and turned to
+  // ry -0.35 so its face points at the approaching camera instead of
+  // straight across the road. Clear of parasol1 (207, -52 — its cone
+  // top is below the sign's bottom edge) and the wheel rim (z -60).
+  const beachSign = new THREE.Mesh(
+    new THREE.PlaneGeometry(14, 7),
+    new THREE.MeshBasicMaterial({ map: makeSignTexture('PALMERA', '#1a0b2e', '#ff2e88', 'BEACH') }),
+  );
+  beachSign.position.set(210, 9, -52);
+  beachSign.rotation.y = -0.35;
+  scene.add(beachSign);
+  for (const [ppx, ppz] of [[203.5, -54.5], [216.5, -49.5]]) {
+    const signPole = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.09, 0.09, 9, 6),
+      new THREE.MeshLambertMaterial({ color: 0x222222 }),
+    );
+    signPole.position.set(ppx, 4.5, ppz);
+    scene.add(signPole);
+  }
 
   // Highway overpass across the north edge (z = -210): deck + pillars.
   const deckMat = new THREE.MeshLambertMaterial({ color: 0x3a3f4a });
@@ -924,12 +949,28 @@ export function createWorld(scene, seed, assets) {
   const umbrellaSpots = [];
   for (let z = -180; z <= 180; z += 45) umbrellaSpots.push([222, z]);
   for (let z = -96; z <= 24; z += 12) umbrellaSpots.push([216 + rng() * 10, z]);
+  // v9-neon: shared neon trim for the in-frame cluster umbrellas (pink /
+  // cyan alternating by index — no rng consumed, so the seeded world
+  // layout after this point does not shift). R2 (dream-loop R1: a flat
+  // torus at the cone rim is edge-on from the chase camera and invisible)
+  // — an open cone band wrapping the umbrella's lower slope, so the neon
+  // reads as a bright stripe on the canopy from the road.
+  const umbrellaTrimGeo = new THREE.CylinderGeometry(1.38, 2.3, 0.5, 8, 1, true);
+  const umbrellaTrimPink = new THREE.MeshBasicMaterial({ color: 0xff2e88, side: THREE.DoubleSide });
+  const umbrellaTrimCyan = new THREE.MeshBasicMaterial({ color: 0x37e0ff, side: THREE.DoubleSide });
   let umbrellaIdx = 0;
   for (const [ux, uz] of umbrellaSpots) {
     const umbrellaMat = new THREE.MeshLambertMaterial({ color: pick(rng, umbrellaColors), side: THREE.DoubleSide });
     const umb = new THREE.Mesh(new THREE.ConeGeometry(2.2, 1.2, 8), umbrellaMat);
     umb.position.set(ux, 2.4, uz);
     scene.add(umb);
+    // Neon band on every cluster umbrella (idx >= 9: the dense z -96..24
+    // band in the cover's sightline), so the beach reads neon, not flat.
+    if (umbrellaIdx >= 9) {
+      const trim = new THREE.Mesh(umbrellaTrimGeo, umbrellaIdx % 2 === 0 ? umbrellaTrimPink : umbrellaTrimCyan);
+      trim.position.set(ux, 2.05, uz);
+      scene.add(trim);
+    }
     const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.4, 6), poleMat);
     stick.position.set(ux, 1.2, uz);
     scene.add(stick);
@@ -945,12 +986,23 @@ export function createWorld(scene, seed, assets) {
       back.position.set(ux - 2.6, 0.6, uz + 2.3);
       back.rotation.x = -0.6;
       scene.add(back);
+      // v9-neon: cyan neon strip along the seat's front edge.
+      const chairNeon = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.05, 0.08), umbrellaTrimCyan);
+      chairNeon.position.set(ux - 2.6, 0.44, uz + 0.35);
+      scene.add(chairNeon);
     }
     umbrellaIdx += 1;
   }
   // v9 R2: boardwalk parasols — three big umbrellas ON the boardwalk edge
   // (x 207), close to the road, so the beach reads in the mid-frame right
   // instead of only far on the sand. Chairs under two of them.
+  // v9-neon: neon band on every boardwalk parasol (trim colour alternates
+  // pink/cyan against the parasol colour) + neon lamp posts down the
+  // boardwalk edge so the boardwalk glows in the cover's mid-frame right.
+  // R2: band (open cone sleeve) instead of a flat rim torus — the torus
+  // was edge-on and invisible from the road.
+  const parasolTrimGeo = new THREE.CylinderGeometry(1.68, 2.7, 0.55, 8, 1, true);
+  let parasolIdx = 0;
   for (const [px, pz, pcolor] of [[207, -32, 0xff5e8a], [207, -52, 0xffd23e], [207, -72, 0x37e0ff]]) {
     const parasolMat = new THREE.MeshLambertMaterial({ color: pcolor, side: THREE.DoubleSide });
     const parasol = new THREE.Mesh(new THREE.ConeGeometry(2.6, 1.4, 8), parasolMat);
@@ -959,6 +1011,27 @@ export function createWorld(scene, seed, assets) {
     const pstick = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 2.6, 6), poleMat);
     pstick.position.set(px, 1.3, pz);
     scene.add(pstick);
+    const ptrim = new THREE.Mesh(parasolTrimGeo, parasolIdx % 2 === 0 ? umbrellaTrimCyan : umbrellaTrimPink);
+    ptrim.position.set(px, 2.175, pz);
+    scene.add(ptrim);
+    parasolIdx += 1;
+  }
+  // Boardwalk neon lamps: dark poles with glowing pink/cyan heads,
+  // staggered between the parasols (x 203, clear of the walkers at 207).
+  // R2: heads bigger (0.35 -> 0.45) so they read at contact-sheet scale;
+  // the z -28 slot moved to -18 (the PALMERA sign now stands at -28).
+  const lampHeadGeo = new THREE.SphereGeometry(0.45, 8, 6);
+  const lampPoleGeo = new THREE.CylinderGeometry(0.09, 0.09, 4.5, 6);
+  for (const [lx, lz, lmat] of [
+    [203, -18, umbrellaTrimPink], [203, -48, umbrellaTrimCyan],
+    [203, -68, umbrellaTrimPink], [203, -88, umbrellaTrimCyan],
+  ]) {
+    const lpole = new THREE.Mesh(lampPoleGeo, poleMat);
+    lpole.position.set(lx, 2.25, lz);
+    scene.add(lpole);
+    const lhead = new THREE.Mesh(lampHeadGeo, lmat);
+    lhead.position.set(lx, 4.7, lz);
+    scene.add(lhead);
   }
   for (const [cx, cz] of [[204.5, -30.5], [204.5, -50.5]]) {
     const chairMat2 = new THREE.MeshLambertMaterial({ color: 0xf2f2f2 });
@@ -971,6 +1044,10 @@ export function createWorld(scene, seed, assets) {
     back2.position.set(cx, 0.6, cz + 1.1);
     back2.rotation.x = -0.6;
     scene.add(back2);
+    // v9-neon: cyan neon strip along the seat's front edge.
+    const chairNeon2 = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.05, 0.08), umbrellaTrimCyan);
+    chairNeon2.position.set(cx, 0.44, cz - 0.85);
+    scene.add(chairNeon2);
   }
 
   // Parked cars along Ocean Boulevard + Neon Mile (static, same factory).

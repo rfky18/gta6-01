@@ -34,7 +34,7 @@ if (existsSync(join(here, 'screenshots'))) cpSync(join(here, 'screenshots'), joi
 // (1.960 / 2.400 XP), mission timer 2:40 + PAR BONUS +$650, combat staged
 // at REP 4, warm orange sun, textured road, varied building windows,
 // sculpt pass 2 on the Solaris GT (steeper wedge, brighter headlights).
-const ENTRY_VERSION = 'v9 — C1 mixed police response: live RAMMING / PURSUIT / ROADBLOCK / SEARCHING states per unit (coloured HUD pills + In sight / Search zone chip + search-zone circle on the minimap), VIPER-9 roadblock car that parks across the road with barricades and physically blocks the player (latched anchor, collision + condition cost), living beach (colourful umbrellas + lounge chairs + beach/boardwalk walkers + driven orange convertible traffic), roadblock mission objective + banner';
+const ENTRY_VERSION = 'v9 — C1 mixed police response: live RAMMING / PURSUIT / ROADBLOCK / SEARCHING states per unit (coloured HUD pills + In sight / Search zone chip + search-zone circle on the minimap), VIPER-9 roadblock car that parks across the road with barricades and physically blocks the player (latched anchor, collision + condition cost), living beach (colourful umbrellas + lounge chairs + beach/boardwalk walkers + driven orange convertible traffic), roadblock mission objective + banner; neon styling for the new C1 elements: neon face strips + lamp bulbs + cone bands + glow strip on the roadblock, PALMERA BEACH neon sign + neon bands on beach umbrellas/parasols + boardwalk neon lamps, neon glow on the police state pills + sight chip';
 writeFileSync(
   join(out, 'dossier.json'),
   buildDossier(out, {

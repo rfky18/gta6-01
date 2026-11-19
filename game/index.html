@@ -37,6 +37,15 @@
   --map-bg: #23262e;
   --gold-ring: rgba(255, 210, 62, 0.8);
   --gold-glow: rgba(255, 210, 62, 0.5);
+  /* v9-neon: glow colours for the police state pills + sight chip — the
+     same hue as each pill's fill, so the neon reads as light, not a new
+     colour. All glow goes through tokens, like every other colour. */
+  --neon-red: rgba(255, 46, 46, 0.8);
+  --neon-amber: rgba(255, 158, 62, 0.8);
+  --neon-yellow: rgba(255, 233, 138, 0.8);
+  --neon-blue: rgba(55, 182, 255, 0.8);
+  --neon-cyan: rgba(55, 224, 255, 0.8);
+  --neon-grey: rgba(135, 141, 156, 0.8);
   --track: #33364a;
   --font-display: Impact, 'Arial Narrow', 'Liberation Sans Narrow', sans-serif;
   --font-body: system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -71,20 +80,23 @@
   /* v9: sight chip — "In sight" (red) while any unit sees the player,
      "Search zone" (amber) once the trail goes cold. Sits left of the count. */
   #police-sight { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 10px; margin-right: 6px; }
-  #police-sight.sight-seen { background: var(--red); color: var(--white); }
-  #police-sight.sight-search { background: var(--amber); color: var(--ink); }
+  #police-sight.sight-seen { background: var(--red); color: var(--white); box-shadow: 0 0 8px var(--neon-red); }
+  #police-sight.sight-search { background: var(--amber); color: var(--ink); box-shadow: 0 0 8px var(--neon-amber); }
   .police-row { display: flex; justify-content: space-between; font-size: 13px; padding: 2px 0; }
   .police-row .callsign { font-weight: 700; }
   .police-row .state { color: var(--gold); font-weight: 700; }
   /* v9: one coloured pill per police state, so the mixed response reads
      at a glance (rank 1's RAMMING red / ROADBLOCK amber / PURSUIT pale
-     yellow). The class comes from the live mode — never staged text. */
-  .police-row .state-ramming { background: var(--red-bright); color: var(--white); border-radius: 10px; padding: 1px 7px; font-size: 11px; }
-  .police-row .state-roadblock { background: var(--amber); color: var(--ink); border-radius: 10px; padding: 1px 7px; font-size: 11px; }
-  .police-row .state-pursuit { background: var(--yellow-pale); color: var(--ink); border-radius: 10px; padding: 1px 7px; font-size: 11px; }
-  .police-row .state-searching { background: var(--blue); color: var(--white); border-radius: 10px; padding: 1px 7px; font-size: 11px; }
-  .police-row .state-patrol { background: var(--grey); color: var(--white); border-radius: 10px; padding: 1px 7px; font-size: 11px; }
-  .police-row .state-spotlight { background: var(--cyan); color: var(--ink); border-radius: 10px; padding: 1px 7px; font-size: 11px; }
+     yellow). The class comes from the live mode — never staged text.
+     v9-neon: each pill glows in its own state colour (box-shadow through
+     the --neon-* tokens) so the response panel reads as neon signage,
+     consistent with the city — text contrast unchanged (same fills). */
+  .police-row .state-ramming { background: var(--red-bright); color: var(--white); border-radius: 10px; padding: 1px 7px; font-size: 11px; box-shadow: 0 0 10px var(--neon-red); }
+  .police-row .state-roadblock { background: var(--amber); color: var(--ink); border-radius: 10px; padding: 1px 7px; font-size: 11px; box-shadow: 0 0 10px var(--neon-amber); }
+  .police-row .state-pursuit { background: var(--yellow-pale); color: var(--ink); border-radius: 10px; padding: 1px 7px; font-size: 11px; box-shadow: 0 0 10px var(--neon-yellow); }
+  .police-row .state-searching { background: var(--blue); color: var(--white); border-radius: 10px; padding: 1px 7px; font-size: 11px; box-shadow: 0 0 10px var(--neon-blue); }
+  .police-row .state-patrol { background: var(--grey); color: var(--white); border-radius: 10px; padding: 1px 7px; font-size: 11px; box-shadow: 0 0 10px var(--neon-grey); }
+  .police-row .state-spotlight { background: var(--cyan); color: var(--ink); border-radius: 10px; padding: 1px 7px; font-size: 11px; box-shadow: 0 0 10px var(--neon-cyan); }
   .police-row.dim { opacity: 0.75; }
   /* Top-right: clock, money, wanted, weapon */
   #top-right { position: absolute; top: 14px; right: 14px; text-align: right; }
@@ -143,7 +155,7 @@
      ("SPOTLIGHT" was covered) in the combat shot. Bottom-centre is clear
      of the mission/police panels (left), minimap (bottom-left), speedo
      (bottom-right) and crosshair (centre). */
-  #hud-banner { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); font-size: 22px; font-weight: 900; letter-spacing: 1px; color: var(--gold); text-shadow: 0 3px 12px var(--black); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 18px; display: none; white-space: nowrap; }
+  #hud-banner { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); font-size: 22px; font-weight: 900; letter-spacing: 1px; color: var(--gold); text-shadow: 0 3px 12px var(--black); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 18px; display: none; white-space: nowrap; box-shadow: 0 0 16px var(--gold-glow); }
   /* Full screens */
   .screen { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--paper); background: var(--screen-bg); }
   .screen > * { position: relative; z-index: 1; }

@@ -103,11 +103,21 @@ export function createPolice(scene, world) {
   // + two barriers close the whole 11 m width. Cones mark the edges.
   // v9 R2: barriers bigger (2.4 -> 3.2 long) and turned across the road —
   // the R1 bars ran along the road edge and read as thin sticks.
+  // v9-neon: the block is part of NEON DISTRICT, not a plain roadwork
+  // prop — each barrier carries a neon strip along its top bar + three
+  // neon lamp bulbs (pink on one side, cyan on the other, city palette),
+  // each cone gets a neon tip beacon, and a soft pink glow strip lies on
+  // the road under the block. All MeshBasicMaterial (unlit, reads at
+  // sunset). Collision unchanged: these are children of the unit mesh,
+  // the physical block is still the unit itself (push-out + speed ÷2).
   const roadblockProps = new THREE.Group();
   {
     const barrierMat = new THREE.MeshLambertMaterial({ color: 0xff6a1a });
     const stripeMat = new THREE.MeshLambertMaterial({ color: 0xf2f2f2 });
     const legMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
+    const neonPinkMat = new THREE.MeshBasicMaterial({ color: 0xff2e88 });
+    const neonCyanMat = new THREE.MeshBasicMaterial({ color: 0x37e0ff });
+    const bulbGeo = new THREE.SphereGeometry(0.17, 8, 6);
     for (const side of [-1, 1]) {
       const barrier = new THREE.Group();
       const top = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.4, 3.2), barrierMat);
@@ -119,6 +129,26 @@ export function createPolice(scene, world) {
       const legR = legL.clone();
       legR.position.z = 1.3;
       barrier.add(top, stripe, legL, legR);
+      // Neon strip along the top bar + three lamp bulbs on top of it.
+      const neonMat = side < 0 ? neonPinkMat : neonCyanMat;
+      const neonStrip = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.08, 3.2), neonMat);
+      neonStrip.position.y = 1.24;
+      barrier.add(neonStrip);
+      for (const bz of [-1.1, 0, 1.1]) {
+        const bulb = new THREE.Mesh(bulbGeo, neonMat);
+        bulb.position.set(0, 1.36, bz);
+        barrier.add(bulb);
+      }
+      // v9-neon R2 (dream-loop R1: the top strip is edge-on from the
+      // chase camera and the bulbs hide behind the bar — the block read
+      // plain orange/white). Neon face strips on BOTH vertical faces of
+      // the top bar, so the glow faces the approaching car whichever way
+      // the unit parked, plus a glowing band around every cone.
+      for (const fx of [-0.1, 0.1]) {
+        const face = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.34, 3.0), neonMat);
+        face.position.set(fx, 1.0, 0);
+        barrier.add(face);
+      }
       barrier.position.set(0, 0, side * 4.2);
       roadblockProps.add(barrier);
     }
@@ -127,7 +157,22 @@ export function createPolice(scene, world) {
       const cone = new THREE.Mesh(new THREE.ConeGeometry(0.45, 1.1, 8), coneMat);
       cone.position.set(cx, 0.55, cz);
       roadblockProps.add(cone);
+      // Neon band around the cone's waist + tip beacon on every cone.
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.16, 8), neonPinkMat);
+      band.position.set(cx, 0.7, cz);
+      roadblockProps.add(band);
+      const beacon = new THREE.Mesh(bulbGeo, neonPinkMat);
+      beacon.position.set(cx, 1.18, cz);
+      roadblockProps.add(beacon);
     }
+    // Soft pink glow strip on the road under the block.
+    const glow = new THREE.Mesh(
+      new THREE.PlaneGeometry(9, 2.5),
+      new THREE.MeshBasicMaterial({ color: 0xff2e88, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false }),
+    );
+    glow.rotation.x = -Math.PI / 2;
+    glow.position.y = 0.05;
+    roadblockProps.add(glow);
   }
   roadblockProps.visible = false;
   unit3.add(roadblockProps);
