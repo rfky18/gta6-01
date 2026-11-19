@@ -9,7 +9,7 @@
 // REP progress value, and the siren hears the wanted level.
 // v4: the HUD also gets the XP numbers (REP_XP ladder) and the mission
 // timer + PAR BONUS from missions.timer().
-import { STEP, GAME, WORLD, REP_TITLES, REP_XP } from './config.js';
+import { STEP, GAME, WORLD, CAR, REP_TITLES, REP_XP } from './config.js';
 import { createRandom, formatXp } from './random.js';
 import { createInput, ACTION_ENTER, ACTION_PAUSE, ACTION_JUMP, ACTION_INTERACT } from './input.js';
 import { createWorld } from './world.js';
@@ -24,6 +24,7 @@ import { createHud } from './hud.js';
 import { createAudio } from './audio.js';
 import { loadSave, saveGame } from './save.js';
 import { createRender } from './render.js';
+import { createEffects } from './effects.js';
 import { stageShot } from './shots.js';
 import { warmPortraits } from './portraits.js';
 import { loadGameAssets } from './assets.js';
@@ -48,6 +49,8 @@ const pedestrians = createPedestrians(render.scene, seed, 32);
 const police = createPolice(render.scene, world);
 const hud = createHud();
 const audio = createAudio();
+// v7: tire dust + exhaust smoke, driven by the car's real speed/throttle.
+const effects = createEffects(render.scene, render.camera);
 const input = createInput(canvas);
 warmPortraits();
 if (params.get('rain') === '1') world.setRain(true);
@@ -310,11 +313,15 @@ function step(dt, silent) {
       }
       if (input.takeReload() && !state.driving) combat.reload();
     }
+    // v7: dust/smoke age every step (emission needs real speed + throttle;
+    // on foot the throttle is 0, so old puffs just fade out).
+    let driveY = 0;
     if (state.driving) {
       const drive = input.drive();
       const res = car.update(dt, drive);
       state.kmh = res.kmh;
       player.setArmed(false, false);
+      driveY = drive.y;
     } else {
       const move = input.move();
       player.update(dt, move, input.sprint(), jumpQueued, render.cam.yaw);
@@ -336,6 +343,7 @@ function step(dt, silent) {
       }
       prevFiring = input.firing();
     }
+    effects.update(dt, state.driving ? car.state : null, driveY);
     combat.update(dt, state.driving ? car.state : player.state);
     // Mission marker proximity + combat-stage auto-advance.
     const mpos = state.driving ? car.state : player.state;
@@ -368,7 +376,7 @@ function step(dt, silent) {
       doSave();
     }
     if (!silent) {
-      const speed01 = Math.min(1, Math.abs(car.state.speed) / 34);
+      const speed01 = Math.min(1, Math.abs(car.state.speed) / CAR.maxSpeed);
       audio.setEngine(state.driving ? speed01 : 0, state.driving);
       audio.setSiren(state.wanted > 0 && policeInfo.distance < 120, state.time, state.wanted);
       render.update(dt, look, { x: target.x, y: target.y || 0, z: target.z }, state.driving, speed01);
@@ -400,9 +408,9 @@ function pushHud(dt) {
     x: pos.x,
     z: pos.z,
     street: streetName(pos.x, pos.z),
-    // Speedometer: metres/second x 3.6 = km/h. Max car speed 34 m/s reads
-    // 122 km/h — verified in the ?shot=play staging (v1 artifact of 1-8
-    // km/h was the llvmpipe software renderer at ~0.3 fps, not the math).
+    // Speedometer: metres/second x 3.6 = km/h. Max car speed 47 m/s reads
+    // 169 km/h (v7: raised from 34 m/s / 122 km/h) — verified in the
+    // ?shot=play staging, which drives to the real top speed.
     kmh: state.driving ? Math.abs(car.state.speed) * 3.6 : Math.abs(player.state.speed) * 3.6,
     vehicle: state.driving ? car.state.name : 'On foot',
     condition: car.state.condition,
@@ -529,6 +537,10 @@ function runShot(name) {
   function paint() {
     pushHud(1 / 60);
     render.update(1 / 60, { dx: 0, dy: 0 }, state.driving ? { x: car.state.x, y: 0, z: car.state.z } : { x: player.state.x, y: 0, z: player.state.z }, state.driving, state.driving ? 0.6 : 0);
+    // v7: re-face the dust/smoke puffs at the paint camera — the staging
+    // steps billboarded them to the pre-snap camera, which is edge-on
+    // from the final framing (see effects.js billboard()).
+    effects.billboard();
     render.render();
     painted += 1;
     if (painted < 2) requestAnimationFrame(paint);

@@ -168,11 +168,14 @@ function makeGroundTexture(rng, asphaltImg) {
     // the end-shot camera at a grazing angle and magnify into a flat gold
     // bar across the bottom-right of the frame; same for the x=60 avenue
     // dashes at z 102..132. The 3D dashes/markings carry the roads anyway.
+    // v7: the end shot moved to Ocean Boulevard (x=180), so its dashes at
+    // z 102..132 are skipped too — same trap, same fix.
     g.fillStyle = '#c9a227';
     for (const r of WORLD.roads) {
       for (let v = -MAP_HALF; v < MAP_HALF; v += 12) {
         if (r === 60 && v > 102 && v < 132) continue;
         if (r === 120 && v > 42 && v < 72) continue;
+        if (r === 180 && v > 102 && v < 132) continue;
         g.fillRect(toPx(r - 0.3), toPx(v), 0.6 * MAP_SCALE, 5 * MAP_SCALE);
         g.fillRect(toPx(v), toPx(r - 0.3), 5 * MAP_SCALE, 0.6 * MAP_SCALE);
       }
@@ -428,21 +431,25 @@ export function createWorld(scene, seed, assets) {
     skyTextures.golden = skyPhoto;
   }
 
-  // Sun, fog, lights. The sun sits south-west so a southbound chase down
-  // Ocean Boulevard sees it ahead-left, with the ferris wheel ahead-right.
-  // v3: the sun hangs LOWER (light y 95 -> 55) for a late-sunset cover —
-  // longer shadows, more sky glow over the water.
+  // Sun, fog, lights. The sun sits DUE SOUTH, on the Ocean Boulevard axis
+  // (x = 180), so a southbound chase down the boulevard sees it dead
+  // ahead at the end of the road, like rank 3 — the v6 sun at x = 60 sat
+  // half behind a downtown tower from the cover camera. v7: the disc is
+  // smaller + lower (r 80 -> 60, y 92 -> 75) so it reads as a low sun on
+  // the road, not a big ball in the sky. The light moves with it
+  // (x 60 -> 150, shadow box ±160 -> ±190 so the cover road stays inside
+  // the shadow frustum).
   scene.background = new THREE.Color(PALETTE.sky);
   scene.fog = new THREE.Fog(PALETTE.fog, 120, 700);
   const sun = new THREE.DirectionalLight(PALETTE.sunLight, 1.25);
-  sun.position.set(60, 55, -330);
+  sun.position.set(150, 55, -330);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.camera.left = -160;
-  sun.shadow.camera.right = 160;
-  sun.shadow.camera.top = 160;
-  sun.shadow.camera.bottom = -160;
-  sun.shadow.camera.far = 600;
+  sun.shadow.camera.left = -190;
+  sun.shadow.camera.right = 190;
+  sun.shadow.camera.top = 190;
+  sun.shadow.camera.bottom = -190;
+  sun.shadow.camera.far = 700;
   scene.add(sun);
   const hemi = new THREE.HemisphereLight(PALETTE.hemiSky, PALETTE.hemiGround, 0.75);
   scene.add(hemi);
@@ -472,31 +479,35 @@ export function createWorld(scene, seed, assets) {
   // sky), while meshes always do. The disc faces the boulevard.
   // v3: disc lowered (y 130 -> 92) so it sits just over the horizon water
   // in the cover frame instead of high in the sky.
+  // v7: disc on the road axis (x 60 -> 180, y 92 -> 75) and smaller
+  // (r 80 -> 60) — a low sun at the end of Ocean Boulevard.
   const sunDisc = new THREE.Mesh(
-    new THREE.CircleGeometry(80, 32),
+    new THREE.CircleGeometry(60, 32),
     new THREE.MeshBasicMaterial({ map: sunTex, transparent: true, depthWrite: false, fog: false }),
   );
-  sunDisc.position.set(60, 92, -330);
+  sunDisc.position.set(180, 75, -330);
   sunDisc.lookAt(180, 10, 60);
   scene.add(sunDisc);
   // v4: halo smaller + dimmer still (110 -> 95, opacity 0.25 -> 0.15) so
   // the warm disc keeps a crisp edge against the pink sky.
+  // v7: halo follows the disc (r 95 -> 75).
   const haloDisc = new THREE.Mesh(
-    new THREE.CircleGeometry(95, 32),
+    new THREE.CircleGeometry(75, 32),
     new THREE.MeshBasicMaterial({ map: sunTex, transparent: true, opacity: 0.15, depthWrite: false, fog: false }),
   );
-  haloDisc.position.set(60, 92, -330);
+  haloDisc.position.set(180, 75, -330);
   haloDisc.lookAt(180, 10, 60);
   scene.add(haloDisc);
   // v5: a soft haze disc behind the sun so the disc sits in glowing air
   // instead of pasted on the sky (LOCAL-JUDGE-v4 C3). Round 2: radius
   // 150 -> 110 and opacity 0.14 -> 0.10 — the big disc washed half the
   // sky pale in round 1; haze hugs the sun now, it does not own the sky.
+  // v7: haze follows the disc (r 110 -> 90).
   const hazeDisc = new THREE.Mesh(
-    new THREE.CircleGeometry(110, 32),
+    new THREE.CircleGeometry(90, 32),
     new THREE.MeshBasicMaterial({ color: 0xffb38a, transparent: true, opacity: 0.1, depthWrite: false, fog: false }),
   );
-  hazeDisc.position.set(60, 92, -330);
+  hazeDisc.position.set(180, 75, -330);
   hazeDisc.lookAt(180, 10, 60);
   scene.add(hazeDisc);
   animated.sunSprite = sunDisc;
@@ -512,15 +523,16 @@ export function createWorld(scene, seed, assets) {
     animated.clouds.push(cloud);
   }
   // v5: haze puffs hugging the sun disc (LOCAL-JUDGE-v4 C3) — flat,
-  // warm, low-opacity, clustered around (60, 92, -330) so the low sun
+  // warm, low-opacity, clustered around (180, 75, -330) so the low sun
   // reads through cloud and haze instead of a bare disc. Round 2: own
   // material at 0.35 (the 0.65 cloud material blew out to white cotton),
   // smaller and tighter to the disc.
+  // v7: cluster follows the disc to the road axis (was 60, 92).
   const puffMat = new THREE.MeshBasicMaterial({ color: 0xffc9a0, transparent: true, opacity: 0.35, fog: false });
   for (let i = 0; i < 5; i += 1) {
     const puff = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 8), puffMat);
     puff.scale.set(range(rng, 22, 40), range(rng, 3, 6), range(rng, 8, 14));
-    puff.position.set(60 + range(rng, -70, 70), range(rng, 82, 115), -330 + range(rng, -20, 20));
+    puff.position.set(180 + range(rng, -70, 70), range(rng, 65, 95), -330 + range(rng, -20, 20));
     scene.add(puff);
     animated.clouds.push(puff);
   }
@@ -568,7 +580,10 @@ export function createWorld(scene, seed, assets) {
       // sits 3.6 m ahead of that camera and magnifies into a flat gold
       // bar across the bottom-right of the frame. The painted dashes
       // there are already skipped in the ground texture too.
+      // v7: same trap on Ocean Boulevard now that the end shot walks it —
+      // the dash at (180,120) sits ~4 m ahead of that camera.
       if (axis === 'z' && fixed === 120 && v > 54 && v < 66) continue;
+      if (axis === 'x' && fixed === 180 && v > 102 && v < 132) continue;
       const dash = new THREE.Mesh(markDashGeo, markYellow);
       if (axis === 'x') { dash.position.set(fixed, 0.04, v); }
       else { dash.position.set(v, 0.04, fixed); dash.rotation.y = Math.PI / 2; }
@@ -637,7 +652,8 @@ export function createWorld(scene, seed, assets) {
     // v6 R2: keep the end shot's foreground clean — no puddle on the
     // x=60 avenue between z 80 and 130, where Dario walks into the sun
     // (an R2 puddle landed right behind his legs on the zebra).
-    if (Math.abs(puddle.position.x - 60) < 6 && puddle.position.z > 80 && puddle.position.z < 130) continue;
+    // v7: same for Ocean Boulevard — the end shot walks x=180 now.
+    if ((Math.abs(puddle.position.x - 60) < 6 || Math.abs(puddle.position.x - 180) < 6) && puddle.position.z > 80 && puddle.position.z < 130) continue;
     puddle.rotation.x = -Math.PI / 2;
     puddle.scale.set(range(rng, 2, 4.5), range(rng, 1.2, 2.5), 1);
     scene.add(puddle);

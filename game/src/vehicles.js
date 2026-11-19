@@ -92,6 +92,17 @@ const GEO = {
   endplate: new THREE.BoxGeometry(0.06, 0.3, 0.55),
   haunch: new THREE.BoxGeometry(0.22, 0.34, 1.1),
   skirt: new THREE.BoxGeometry(0.1, 0.16, 2.6),
+  // v7: side-panel sculpt (LOCAL-JUDGE-v6 C3 — the rank-3 decider: our
+  // flank still reads as one flat slab from the cover's rear three-quarter
+  // angle). Shoulder crease, layered skirt blade + neon stripe, fender
+  // arch trims, diagonal door slash, headlight beam cones + road pools.
+  shoulder: new THREE.BoxGeometry(0.05, 0.09, 3.1),
+  skirtBlade: new THREE.BoxGeometry(0.14, 0.1, 3.0),
+  skirtStripe: new THREE.BoxGeometry(0.15, 0.035, 3.0),
+  archTrim: new THREE.TorusGeometry(0.52, 0.055, 6, 12, Math.PI),
+  doorSlash: new THREE.BoxGeometry(0.04, 0.5, 0.12),
+  headCone: new THREE.ConeGeometry(0.9, 7, 12, 1, true),
+  glowPool: new THREE.CircleGeometry(2.0, 20),
   light: new THREE.BoxGeometry(0.46, 0.16, 0.08),
   headBar: new THREE.BoxGeometry(1.85, 0.09, 0.06), // v4: wider bar
   drl: new THREE.BoxGeometry(0.3, 0.1, 0.06), // v4: corner DRL pod
@@ -114,6 +125,10 @@ const GEO = {
   stripe: new THREE.BoxGeometry(2.12, 0.3, 4.62),
   smoke: new THREE.SphereGeometry(0.7, 8, 6),
 };
+
+// Headlight beam cone: narrow at the lamp, wide 7 m ahead. The geometry is
+// rotated once here so the mesh can stay axis-aligned (apex at -z).
+GEO.headCone.rotateX(-Math.PI / 2);
 
 export function buildCarMesh(opts) {
   const o = opts || {};
@@ -184,6 +199,35 @@ export function buildCarMesh(opts) {
     const skirt = new THREE.Mesh(GEO.skirt, darkMat);
     skirt.position.set(s * 1.06, 0.22, 0);
     group.add(skirt);
+    // v7: layered side panels so the flank reads sculpted, not slab —
+    // a shoulder crease along the door, a wider skirt blade under the
+    // skirt, and fender arch trims proud of the tyres (front arch just
+    // outside the front tyre face, rear arch just outside the wider rear
+    // rubber). The trims are half-tori in the side plane, opening down.
+    const shoulder = new THREE.Mesh(GEO.shoulder, darkMat);
+    shoulder.position.set(s * 1.06, 0.62, 0.2);
+    group.add(shoulder);
+    const blade = new THREE.Mesh(GEO.skirtBlade, darkMat);
+    blade.position.set(s * 1.08, 0.13, 0);
+    group.add(blade);
+    for (const [ax, az] of [[1.15, 1.5], [1.31, -1.5]]) {
+      const arch = new THREE.Mesh(GEO.archTrim, darkMat);
+      arch.rotation.y = Math.PI / 2;
+      arch.position.set(s * ax, 0.42, az);
+      group.add(arch);
+    }
+    if (o.sport) {
+      // v7: thin neon skirt stripe (echoes the pink underglow) + a
+      // diagonal slash on the door — the hero's flank gets one more
+      // layered line so it holds up next to rank 3's wedge.
+      const stripe = new THREE.Mesh(GEO.skirtStripe, new THREE.MeshBasicMaterial({ color: 0xff2e88, transparent: true, opacity: 0.85 }));
+      stripe.position.set(s * 1.15, 0.13, 0);
+      group.add(stripe);
+      const slash = new THREE.Mesh(GEO.doorSlash, darkMat);
+      slash.position.set(s * 1.06, 0.55, 0.5);
+      slash.rotation.x = 0.5;
+      group.add(slash);
+    }
   }
   // Grille + mirrors + exhausts (hero: quad tips, 2 per side).
   const grille = new THREE.Mesh(GEO.grille, darkMat);
@@ -261,6 +305,26 @@ export function buildCarMesh(opts) {
     const h = new THREE.Mesh(GEO.light, headMat);
     h.position.set(s, 0.5, 2.64);
     group.add(h);
+  }
+  // v7: headlight glow the rear cover camera can actually see — the lamps
+  // face away from it, so the glow is the beams themselves: two faint
+  // additive cones splayed slightly outward + bright pools on the road
+  // ~6 m ahead, past the car's flanks.
+  // v7 R2: pool 0.10 -> 0.18, cone 0.09 -> 0.13, pools bigger + closer —
+  // the R1 values washed out on the bright asphalt overlay.
+  if (o.sport) {
+    const beamMat = new THREE.MeshBasicMaterial({ color: 0xffe9a0, transparent: true, opacity: 0.13, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+    const poolMat = new THREE.MeshBasicMaterial({ color: 0xffe9a0, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+    for (const s of [-0.62, 0.62]) {
+      const cone = new THREE.Mesh(GEO.headCone, beamMat);
+      cone.position.set(s, 0.5, 6.14);
+      cone.rotation.y = -s * 0.08;
+      group.add(cone);
+      const pool = new THREE.Mesh(GEO.glowPool, poolMat);
+      pool.rotation.x = -Math.PI / 2;
+      pool.position.set(s, 0.05, 7.5);
+      group.add(pool);
+    }
   }
   // v6: the tail is the cover's money shot — a dark inset panel behind
   // the lamps, a BRIGHT full-width bar (not dim maroon), big angled

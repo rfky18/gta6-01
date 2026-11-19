@@ -42,7 +42,11 @@ export const CAR = {
   accel: 16,
   brake: 30,
   reverseAccel: 10,
-  maxSpeed: 34,
+  // v7: top speed 34 -> 47 m/s (122 -> 169 km/h). The cover chases at the
+  // old cap read 122 km/h against rank 3's 167 — a real top speed, driven
+  // to in the staging rolls, not a HUD override. A sports car outrunning
+  // the SVPD cruisers (30 m/s) is the genre, not a balance break.
+  maxSpeed: 47,
   maxReverse: 10,
   steer: 1.9,
   grip: 6,

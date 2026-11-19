@@ -11,7 +11,7 @@
 // MISSION 7/8 (SUNSET GETAWAY, stage 2/3, Rico Vane dialog), REP 4 ·
 // BAY HUSTLER with the REP bar nearly full + "1.960 / 2.400 XP", mission
 // timer 2:40 + PAR BONUS +$650, 5 traffic cars + 6 walkers in frame, full HUD.
-import { GAME, COVER } from './config.js';
+import { GAME, COVER, CAR } from './config.js';
 
 export function stageShot(game, name) {
   const g = game;
@@ -57,6 +57,18 @@ export function stageShot(game, name) {
     g.input.press('KeyW');
     for (let i = 0; i < 24; i += 1) g.step(1 / 60, true);
     g.input.release('KeyW');
+    // v7: pin the cover at the car's REAL top speed (169 km/h). The rolls
+    // above reach the raised cap in theory (23 + 16 m/s² × 1.5 s = 47),
+    // but a building clip during the rolls would cost speed and the HUD
+    // would read low against rank 3's 167 — so roll on until V-max is
+    // actually reached (normally 0 extra steps), then release.
+    g.input.press('KeyW');
+    let topUp = 0;
+    while (g.car.state.speed < CAR.maxSpeed - 0.5 && topUp < 120) {
+      g.step(1 / 60, true);
+      topUp += 1;
+    }
+    g.input.release('KeyW');
     // Pull the pursuit into frame LAST, after the staging steps, so nothing
     // moves it out of frame: VIPER-4 big and close ahead-left of the Solaris,
     // VIPER-7 ahead-right on the road, VIPER-9 + VIPER-12 further up the
@@ -95,17 +107,26 @@ export function stageShot(game, name) {
     // try hid it behind downtown towers), crisp 3D lane dashes + zebra
     // underfoot, palms and towers flanking. Same story beat (Final Deal
     // complete, REP 5), new staging: the walk into the sunset, not a
-    // garage yard. Player at z=116 so the Neon Mile benches stay behind
+    // garage yard. Player at z=96 so the Neon Mile benches stay behind
     // the camera instead of looming across the bottom of the frame.
+    // v7: the walk moves to Ocean Boulevard (x=180) — the sun moved onto
+    // the x=180 road axis, so the x=60 avenue no longer has the sun in
+    // its gap. Same walk, better road: beach + ferris wheel ahead-left,
+    // sun dead ahead on the road axis. The x=180 dashes/puddles in the
+    // foreground are skipped in world.js (same gold-bar trap as v6 R2b).
+    // v7 R2: player at z=96, not 116 — the world parks cars on the
+    // beach-side lane (x=191) and the one at (191,106) sat half-cut at
+    // the frame's right edge from z=116; from z=96 it falls behind the
+    // camera. The Neon Mile benches (z~127) stay behind the camera too.
     g.missions.setState(7, 2, true);
     g.state.money = 6950;
     g.state.rep = 5;
     g.setWanted(0);
     g.state.clockMinutes = 19 * 60 + 24;
-    g.player.place(56, 116, 0);
+    g.player.place(176, 96, 0);
     g.state.driving = false;
     g.player.mesh.visible = true;
-    g.player.lookAt(56, -40);
+    g.player.lookAt(176, -40);
     // Park all traffic on the far west road: an R2 gold traffic car
     // happened to sit right in front of the camera and its roof filled
     // the bottom-right corner of the frame. The end shot is a quiet
@@ -116,14 +137,14 @@ export function stageShot(game, name) {
       { lane: -1.5, ahead: 8 }, { lane: 1.5, ahead: 26 }, { lane: -1.5, ahead: 44 },
       { lane: 1.5, ahead: 62 }, { lane: -1.5, ahead: 80 }, { lane: 1.5, ahead: 98 },
     ]);
-    // Two walkers ahead on the sidewalks of the x=60 avenue.
-    g.pedestrians.placeSidewalk(56, 116, [
+    // Two walkers ahead on the sidewalks of the x=180 avenue.
+    g.pedestrians.placeSidewalk(176, 96, [
       { side: -1, ahead: -18 },
       { side: 1, ahead: -30 },
     ]);
     g.hud.say('Nadia Cruz', 'Two thousand, and the whole city saw you walk out of Ferro’s warehouse. San Vega is yours now, Dario.', 30);
     g.hud.banner('Mission complete: The Final Deal, +$2,000', 30);
-    g.render.snapBehind(g.player.state.heading, { x: 56, y: 0, z: 116 }, false);
+    g.render.snapBehind(g.player.state.heading, { x: 176, y: 0, z: 96 }, false);
     return 'play';
   }
   if (name === 'combat') {

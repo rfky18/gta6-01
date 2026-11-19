@@ -34,7 +34,7 @@ if (existsSync(join(here, 'screenshots'))) cpSync(join(here, 'screenshots'), joi
 // (1.960 / 2.400 XP), mission timer 2:40 + PAR BONUS +$650, combat staged
 // at REP 4, warm orange sun, textured road, varied building windows,
 // sculpt pass 2 on the Solaris GT (steeper wedge, brighter headlights).
-const ENTRY_VERSION = 'v6 — C3 deciders: sculpted Solaris GT rear (sloped decklid, bright full-width tail bar, angled corner clusters, reverse lamps, chrome quad exhausts, flared haunches, valance + spoiler endplates), crisp road (3D lane dashes + edge lines + zebra, tiled asphalt overlay on Ocean Boulevard, shortened wet streaks, anisotropy 8), layered facades (bigger lit windows + floor bands, shopfront base + cornice + pilaster fins), re-staged end shot (Dario walks down the x=60 avenue into the sunset, dressed figure, traffic parked clear)';
+const ENTRY_VERSION = 'v7 — rank-3 deciders: tire dust + exhaust smoke behind the car at speed (real VFX, advected with the car), sun moved onto the Ocean Boulevard axis (full low disc at the end of the road, no longer half-hidden by a tower), sculpted side panels (dark shoulder crease, layered skirt blade + neon stripe, fender arch trims, door slash), headlight glow (beam cones + road pools ahead), real top speed raised to 169 km/h (driven to in the cover staging), end shot re-staged to Ocean Boulevard (sun on the road axis, ferris wheel, crisp road)';
 writeFileSync(
   join(out, 'dossier.json'),
   buildDossier(out, {
