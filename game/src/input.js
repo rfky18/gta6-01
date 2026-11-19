@@ -104,6 +104,10 @@ export function createInput(canvas) {
     radioToggle() {
       return keys.has('KeyT');
     },
+    // HOTFIX: hold Q for the weapon wheel (GTA-style). Q was free.
+    wheelHeld() {
+      return keys.has('KeyQ');
+    },
     firing() {
       return firing;
     },

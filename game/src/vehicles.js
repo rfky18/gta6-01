@@ -239,6 +239,63 @@ export function buildCarMesh(opts) {
     driver.add(torso, head, hair);
     group.add(driver);
     group.userData.driver = driver;
+  } else if (o.police) {
+    // HOTFIX: a cruiser used to be empty — the cabin was a closed glass
+    // box with nobody inside, so the user was right: "mobil doang, gada
+    // orangnya". Police cars now ride open-topped (tub + seats, like the
+    // convertible) with TWO uniformed officers aboard — driver + partner,
+    // navy uniform + cap, heads above the door line so they read from the
+    // chase camera. The light bar rides on a gantry over the tub; the
+    // SVPD mark moves to the tail panel, the face the chase camera sees.
+    const tub = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.22, 2.1), darkMat);
+    tub.position.set(0, 0.78, -0.3);
+    group.add(tub);
+    const seatMat = new THREE.MeshLambertMaterial({ color: 0x1a1d26 });
+    for (const s of [-0.42, 0.42]) {
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.5, 0.5), seatMat);
+      seat.position.set(s, 0.95, -0.55);
+      seat.rotation.x = -0.25;
+      group.add(seat);
+    }
+    const deflector = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.28, 0.05), glassMat);
+    deflector.position.set(0, 0.98, 0.75);
+    deflector.rotation.x = -0.35;
+    group.add(deflector);
+    const uniformMat = new THREE.MeshLambertMaterial({ color: 0x1e2a5e });
+    const skinMat = new THREE.MeshLambertMaterial({ color: 0xc98d64 });
+    const capMat = new THREE.MeshLambertMaterial({ color: 0x141c3e });
+    const officers = [];
+    for (const s of [-0.42, 0.42]) {
+      const officer = new THREE.Group();
+      const torso = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.55, 0.32), uniformMat);
+      torso.position.set(s, 1.12, -0.35);
+      const head = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.34, 0.34), skinMat);
+      head.position.set(s, 1.55, -0.35);
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.12, 0.38), capMat);
+      cap.position.set(s, 1.76, -0.35);
+      const brim = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.04, 0.16), capMat);
+      brim.position.set(s, 1.71, -0.18);
+      // Gold badge dot on the chest — the one detail that says "officer"
+      // at contact-sheet scale.
+      const badge = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.02), new THREE.MeshBasicMaterial({ color: 0xffd23e }));
+      badge.position.set(s - 0.14, 1.2, -0.18);
+      officer.add(torso, head, cap, brim, badge);
+      group.add(officer);
+      officers.push(officer);
+    }
+    group.userData.driver = officers[0];
+    group.userData.officers = officers;
+    // Light-bar gantry: two pillars from the tub + a crossbar, so the bar
+    // sits over the open cabin instead of floating where the roof was.
+    const gantryMat = darkMat;
+    for (const s of [-0.55, 0.55]) {
+      const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.66, 0.08), gantryMat);
+      pillar.position.set(s, 1.11, -0.25);
+      group.add(pillar);
+    }
+    const crossbar = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.08, 0.12), gantryMat);
+    crossbar.position.set(0, 1.44, -0.25);
+    group.add(crossbar);
   } else {
     group.add(cabin, roof, windshield, rearGlass);
   }
@@ -442,15 +499,17 @@ export function buildCarMesh(opts) {
     const stripe = new THREE.Mesh(GEO.stripe, new THREE.MeshLambertMaterial({ color: 0xf2f2f2 }));
     stripe.position.y = 0.72;
     group.add(stripe);
-    // v10: "SVPD" on the sloped rear glass — the one face the chase
-    // camera always sees — so a black cruiser reads as a police car, not
-    // a generic dark sedan, at contact-sheet scale.
+    // HOTFIX: "SVPD" on the tail panel — the one face the chase camera
+    // always sees — so a black cruiser reads as a police car, not a
+    // generic dark sedan, at contact-sheet scale. (Was on the sloped rear
+    // glass; the open police cabin has no glass to carry it.) It hangs
+    // just behind the light bar, white on the dark gantry.
     const svpd = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.3, 0.32),
+      new THREE.PlaneGeometry(1.1, 0.28),
       new THREE.MeshBasicMaterial({ map: makeSvpdTexture(), transparent: true }),
     );
-    svpd.position.set(0, 1.12, -1.34);
-    svpd.rotation.x = 0.5;
+    svpd.position.set(0, 1.44, -0.53);
+    svpd.rotation.y = Math.PI;
     group.add(svpd);
   }
   // Wheels: 5-spoke rims (canvas texture on the hub caps, spun with the
@@ -577,6 +636,47 @@ export function buildBikeMesh(opts) {
   carrier.userData.wheels = wheels;
   carrier.userData.visual = visual;
   return carrier;
+}
+
+// HOTFIX — a standing SVPD officer on foot: navy uniform + cap + gold
+// badge, same figure language as the seated cruiser crew. Used by
+// police.js for the roadblock detail (standing beside the block) and the
+// busted walk-up (closing on the player). Origin at the feet.
+export function buildOfficerMesh() {
+  const group = new THREE.Group();
+  const uniformMat = new THREE.MeshLambertMaterial({ color: 0x1e2a5e });
+  const pantsMat = new THREE.MeshLambertMaterial({ color: 0x141c3e });
+  const skinMat = new THREE.MeshLambertMaterial({ color: 0xc98d64 });
+  const capMat = new THREE.MeshLambertMaterial({ color: 0x141c3e });
+  for (const s of [-0.14, 0.14]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.8, 0.28), pantsMat);
+    leg.position.set(s, 0.4, 0);
+    group.add(leg);
+  }
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.62, 0.34), uniformMat);
+  torso.position.set(0, 1.11, 0);
+  group.add(torso);
+  const badge = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.02), new THREE.MeshBasicMaterial({ color: 0xffd23e }));
+  badge.position.set(-0.16, 1.2, 0.18);
+  group.add(badge);
+  for (const s of [-0.38, 0.38]) {
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.6, 0.22), uniformMat);
+    arm.position.set(s, 1.1, 0);
+    group.add(arm);
+  }
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.34, 0.34), skinMat);
+  head.position.set(0, 1.59, 0);
+  group.add(head);
+  const cap = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.12, 0.38), capMat);
+  cap.position.set(0, 1.8, 0);
+  group.add(cap);
+  const brim = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.04, 0.16), capMat);
+  brim.position.set(0, 1.75, 0.22);
+  group.add(brim);
+  group.traverse((m) => {
+    if (m.isMesh) m.castShadow = true;
+  });
+  return group;
 }
 
 // v10 — one shared arcade-vehicle step, so the hero car, a stolen traffic

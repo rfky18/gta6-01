@@ -23,7 +23,7 @@
 // v3: units 3 + 4 join at wanted 3 (cover staging: 5 named units in frame).
 // v4: HAWK-1 spotlight cone 0.20 -> 0.22 so the heli reads a touch stronger
 // in the cover frame against the brighter orange sun.
-import { buildCarMesh } from './vehicles.js';
+import { buildCarMesh, buildOfficerMesh } from './vehicles.js';
 import { POLICE_CALLSIGNS } from './config.js';
 
 const THREE = window.THREE;
@@ -176,6 +176,30 @@ export function createPolice(scene, world) {
   }
   roadblockProps.visible = false;
   unit3.add(roadblockProps);
+  // HOTFIX: the roadblock is manned — two officers on foot stand beside
+  // the block (children of VIPER-9, so they hold the post with it).
+  // Visible only while the unit is actually in ROADBLOCK mode.
+  const roadblockOfficers = new THREE.Group();
+  {
+    const offA = buildOfficerMesh();
+    offA.position.set(-2.6, 0, 5.2);
+    offA.rotation.y = Math.PI / 2;
+    const offB = buildOfficerMesh();
+    offB.position.set(2.6, 0, -5.2);
+    offB.rotation.y = -Math.PI / 2;
+    roadblockOfficers.add(offA, offB);
+  }
+  roadblockOfficers.visible = false;
+  unit3.add(roadblockOfficers);
+  // HOTFIX: the busted walk-up — two officers who step out of VIPER-4 and
+  // close on the player while the pin timer runs. Scene-level (they walk
+  // away from the car), hidden until a bust is actually in progress.
+  const bustedOfficers = [buildOfficerMesh(), buildOfficerMesh()];
+  for (const o of bustedOfficers) {
+    o.visible = false;
+    scene.add(o);
+  }
+  const bustedOffPos = [{ x: 0, z: 0 }, { x: 0, z: 0 }];
   // HAWK-1 air unit: simple helicopter that shadows the player while wanted.
   const { heli, rotor, spot, spotOuter } = makeHeli();
   scene.add(heli);
@@ -225,6 +249,10 @@ export function createPolice(scene, world) {
     // units that lose the trail SEARCH around this spot.
     lastSeen: { x: 0, z: 0 },
     lastSeenSet: false,
+    // HOTFIX: seconds since ANY unit last saw the player. The main loop
+    // decays the heat once this passes 5 s — the "break line of sight"
+    // escape a player on foot can actually achieve.
+    unseenTimer: 0,
   };
   // Patrol beat: a rectangle loop around downtown.
   const beat = [
@@ -271,10 +299,18 @@ export function createPolice(scene, world) {
     return { x: state.lastSeen.x + Math.cos(a) * 18, z: state.lastSeen.z + Math.sin(a) * 18 };
   }
 
-  function update(dt, target, wanted, time) {
+  function update(dt, target, wanted, time, onFoot) {
     const tx = target.x;
     const tz = target.z;
     const theading = target.heading || 0;
+    // HOTFIX: a cruiser chasing a man on foot does not drive at full
+    // pursuit speed — 36 m/s vs an 8 m/s sprint is why the chase never
+    // ended. On foot the units close at ~22 m/s and slow to an arrest
+    // approach (12 m/s) inside 15 m, so a sprint + a sharp juke can
+    // actually open a gap. In a car the old speeds stand.
+    const foot = !!onFoot;
+    const chaseSpeed = (base) => (foot ? Math.round(base * 0.6) : base);
+    const approachCap = (dist, sp) => (dist < 15 ? Math.min(sp, 12) : sp);
     // Distances first — every mode below is read off these live numbers.
     state.distance = Math.hypot(tx - state.x, tz - state.z);
     state.distance2 = Math.hypot(tx - state.x2, tz - state.z2);
@@ -287,6 +323,9 @@ export function createPolice(scene, world) {
       state.lastSeen.z = tz;
       state.lastSeenSet = true;
     }
+    // HOTFIX: the trail goes cold while NOBODY can see the player.
+    if (wanted > 0 && nearest >= SIGHT_RANGE) state.unseenTimer += dt;
+    else state.unseenTimer = 0;
     if (!state.lastSeenSet) {
       state.lastSeen.x = tx;
       state.lastSeen.z = tz;
@@ -300,7 +339,7 @@ export function createPolice(scene, world) {
         const t = searchTarget(0, time);
         steerToward(state, t.x, t.z, dt, 14);
       } else {
-        steerToward(state, tx, tz, dt, 36);
+        steerToward(state, tx, tz, dt, approachCap(state.distance, chaseSpeed(36)));
       }
     } else {
       state.mode = 'PATROL';
@@ -318,7 +357,7 @@ export function createPolice(scene, world) {
         const t = searchTarget(1, time);
         steerToward(u2, t.x, t.z, dt, 14);
       } else {
-        steerToward(u2, tx + 6, tz - 4, dt, 34);
+        steerToward(u2, tx + 6, tz - 4, dt, approachCap(state.distance2, chaseSpeed(34)));
       }
     } else {
       unit2.visible = false;
@@ -383,14 +422,14 @@ export function createPolice(scene, world) {
         u3.z += Math.cos(u3.heading) * u3.speed * dt;
       } else {
         state.mode3 = 'PURSUIT';
-        steerToward(u3, ax, az, dt, 33);
+        steerToward(u3, ax, az, dt, chaseSpeed(33));
       }
       state.mode4 = state.distance4 < 8 ? 'RAMMING' : state.distance4 > SIGHT_RANGE ? 'SEARCHING' : 'PURSUIT';
       if (state.mode4 === 'SEARCHING') {
         const t = searchTarget(3, time);
         steerToward(u4, t.x, t.z, dt, 14);
       } else {
-        steerToward(u4, tx + 8, tz + 10, dt, 32);
+        steerToward(u4, tx + 8, tz + 10, dt, approachCap(state.distance4, chaseSpeed(32)));
       }
     } else {
       unit3.visible = false;
@@ -412,16 +451,19 @@ export function createPolice(scene, world) {
     state.speed4 = u4.speed;
     // Barricades only ever show on a real ROADBLOCK hold.
     roadblockProps.visible = wanted >= 3 && state.mode3 === 'ROADBLOCK';
-    // Ram: shove the target when we touch it.
+    // Ram: shove the target when we touch it. HOTFIX: only at wanted 2+ —
+    // at 1 star the cops close in to arrest, they do not ram a man on
+    // foot — and the shove is a nudge (6 m/s), not the old 60 m/s launch
+    // that flung the player 110 m across the map (repro E2).
     let rammed = false;
-    if (state.distance < 3.4 && wanted > 0) {
+    if (state.distance < 3.4 && wanted >= 2) {
       rammed = true;
       const push = 6 * dt;
       const dx = tx - state.x;
       const dz = tz - state.z;
       const d = Math.hypot(dx, dz) || 1;
-      target.x += (dx / d) * push * 10;
-      target.z += (dz / d) * push * 10;
+      target.x += (dx / d) * push;
+      target.z += (dz / d) * push;
     }
     if (state.distance2 < 3.4 && wanted >= 2) {
       rammed = true;
@@ -429,8 +471,8 @@ export function createPolice(scene, world) {
       const dx = tx - state.x2;
       const dz = tz - state.z2;
       const d = Math.hypot(dx, dz) || 1;
-      target.x += (dx / d) * push * 10;
-      target.z += (dz / d) * push * 10;
+      target.x += (dx / d) * push;
+      target.z += (dz / d) * push;
     }
     // v9: roadblock collision — the parked ROADBLOCK unit is a physical
     // wall, not a prop. Driving into it shoves the player back out and
@@ -454,6 +496,35 @@ export function createPolice(scene, world) {
     } else {
       state.bustedTimer = 0;
     }
+    // HOTFIX: while the pin timer runs, two officers step out of VIPER-4
+    // and walk up on the player — the bust is visibly happening, not a
+    // timer expiring off-screen. They start at the cruiser and close at
+    // walking speed; the pin resets and they stand down if he gets away.
+    if (state.bustedTimer > 0) {
+      for (let i = 0; i < 2; i += 1) {
+        const o = bustedOfficers[i];
+        const p = bustedOffPos[i];
+        if (!o.visible) {
+          o.visible = true;
+          p.x = state.x + (i === 0 ? -2 : 2);
+          p.z = state.z + 3;
+        }
+        const dx = tx - p.x;
+        const dz = tz - p.z;
+        const d = Math.hypot(dx, dz) || 1;
+        const stepLen = Math.min(d - 1.2, 4.2 * dt);
+        if (stepLen > 0) {
+          p.x += (dx / d) * stepLen;
+          p.z += (dz / d) * stepLen;
+        }
+        o.position.set(p.x, 0, p.z);
+        o.rotation.y = Math.atan2(dx, dz);
+      }
+    } else {
+      for (const o of bustedOfficers) o.visible = false;
+    }
+    // The roadblock detail is manned while the block holds.
+    roadblockOfficers.visible = wanted >= 3 && state.mode3 === 'ROADBLOCK';
     // Flash the light bars while pursuing.
     const flash = wanted > 0 && Math.floor(time * 4) % 2 === 0;
     if (mesh.userData.lightRed) mesh.userData.lightRed.visible = flash;
@@ -511,14 +582,18 @@ export function createPolice(scene, world) {
       units.push({ callsign: POLICE_CALLSIGNS[3], distance: state.distance4, mode: state.mode4 });
     }
     const anySearching = wanted > 0 && units.some((u) => u.mode === 'SEARCHING');
+    const allSearching = wanted > 0 && units.length > 0 && units.every((u) => u.mode === 'SEARCHING');
     return {
       mode: state.mode,
       distance: state.distance,
       rammed,
       busted: state.bustedTimer > 3,
+      bustedTimer: state.bustedTimer,
       units,
       roadblockHit,
       seen: wanted > 0 && nearest < SIGHT_RANGE,
+      unseenFor: state.unseenTimer,
+      allSearching,
       // Search zone: live centre + radius, active while any unit searches.
       searchZone: { x: state.lastSeen.x, z: state.lastSeen.z, radius: SEARCH_RADIUS, active: anySearching },
     };
@@ -529,6 +604,8 @@ export function createPolice(scene, world) {
     state.z = z;
     state.speed = 0;
     state.bustedTimer = 0;
+    state.unseenTimer = 0;
+    for (const o of bustedOfficers) o.visible = false;
     mesh.position.set(x, 0, z);
     // Second unit trails behind the first, on the road, not on the beach.
     state.x2 = x - 3;
@@ -590,5 +667,5 @@ export function createPolice(scene, world) {
     state.heliZ = z;
   }
 
-  return { state, mesh, update, teleport, placeHeli, placeUnit2, placeUnit3, placeUnit4 };
+  return { state, mesh, unit3, roadblockOfficers, bustedOfficers, update, teleport, placeHeli, placeUnit2, placeUnit3, placeUnit4 };
 }

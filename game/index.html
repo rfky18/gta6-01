@@ -98,7 +98,29 @@
   .police-row .state-patrol { background: var(--grey); color: var(--white); border-radius: 10px; padding: 1px 7px; font-size: 11px; box-shadow: 0 0 10px var(--neon-grey); }
   .police-row .state-spotlight { background: var(--cyan); color: var(--ink); border-radius: 10px; padding: 1px 7px; font-size: 11px; box-shadow: 0 0 10px var(--neon-cyan); }
   .police-row.dim { opacity: 0.75; }
-  /* Top-right: clock, money, wanted, weapon */
+  /* HOTFIX: the "lose them" read-out under the police list — live text
+     plus a gold progress bar (same tokens as the REP bar, no new colours). */
+  #police-lose { margin-top: 7px; display: none; }
+  #police-lose-text { font-size: 12px; font-weight: 700; color: var(--yellow-pale); }
+  #police-lose-bar { margin-top: 4px; height: 6px; background: var(--bar-bg); border-radius: 3px; overflow: hidden; }
+  #police-lose-fill { display: block; height: 100%; background: var(--gold); width: 0%; }
+  /* HOTFIX: the weapon wheel (hold Q) — a centred radial picker over the
+     dimmed game, five segments around a hub. Segments are real buttons
+     (click picks + closes); the HUD fills name/ammo/active live. */
+  #weapon-wheel { position: absolute; left: 50%; top: 50%; width: 340px; height: 340px; margin: -170px 0 0 -170px; display: none; pointer-events: auto; z-index: 6; }
+  #weapon-wheel .wheel-hub { position: absolute; left: 50%; top: 50%; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; background: var(--panel); border: 2px solid var(--gold); display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--paper); text-align: center; padding: 6px; }
+  #weapon-wheel .wheel-hub b { font-size: 14px; color: var(--gold); }
+  #weapon-wheel .wheel-hub span { font-size: 10px; color: var(--muted); line-height: 1.35; }
+  .wheel-seg { position: absolute; width: 108px; padding: 8px 6px; background: var(--panel); border: 1px solid var(--line-soft); border-radius: 8px; color: var(--paper); font-family: var(--font-body); font-size: 12px; font-weight: 700; text-align: center; cursor: pointer; }
+  .wheel-seg .wheel-key { color: var(--gold); margin-right: 4px; }
+  .wheel-seg .wheel-ammo { display: block; color: var(--cyan-soft); font-size: 11px; font-weight: 700; }
+  .wheel-seg.active { border-color: var(--gold); box-shadow: 0 0 12px var(--gold-glow); color: var(--paper); }
+  .wheel-seg:focus-visible { outline: 3px solid var(--paper); outline-offset: 2px; }
+  .wheel-seg[data-slot="0"] { left: 116px; top: 2px; }
+  .wheel-seg[data-slot="1"] { right: 2px; top: 78px; }
+  .wheel-seg[data-slot="2"] { right: 22px; bottom: 22px; }
+  .wheel-seg[data-slot="3"] { left: 22px; bottom: 22px; }
+  .wheel-seg[data-slot="4"] { left: 2px; top: 78px; }
   #top-right { position: absolute; top: 14px; right: 14px; text-align: right; }
   #hud-clock { font-size: 13px; font-weight: 700; color: var(--gold); background: var(--panel); border-radius: 6px; padding: 3px 10px; display: inline-block; }
   #hud-money { font-family: var(--font-display); font-size: 38px; font-weight: 400; color: var(--green); text-shadow: 0 2px 8px var(--shadow); line-height: 1.05; letter-spacing: 1px; }
@@ -194,6 +216,7 @@
   <div id="police-panel" class="panel">
     <h3>SVPD response <span id="police-count">2 units, code 1</span><span id="police-sight"></span></h3>
     <div id="police-list"></div>
+    <div id="police-lose"><span id="police-lose-text"></span><div id="police-lose-bar"><i id="police-lose-fill"></i></div></div>
   </div>
   <div id="top-right">
     <div id="hud-clock">Day 1 18:52</div>
@@ -226,6 +249,14 @@
   <div id="hitmarker"></div>
   <div id="hud-interact"><b>[E]</b> <span id="interact-label">Enter vehicle</span></div>
   <div id="hud-banner"></div>
+  <div id="weapon-wheel" role="dialog" aria-label="Weapon wheel">
+    <button class="wheel-seg" data-slot="0"><span class="wheel-key">0</span><span class="wheel-name">Fists</span><span class="wheel-ammo">∞</span></button>
+    <button class="wheel-seg" data-slot="1"><span class="wheel-key">1</span><span class="wheel-name">Vk-9</span><span class="wheel-ammo">12/72</span></button>
+    <button class="wheel-seg" data-slot="2"><span class="wheel-key">2</span><span class="wheel-name">Wasp</span><span class="wheel-ammo">32/160</span></button>
+    <button class="wheel-seg" data-slot="3"><span class="wheel-key">3</span><span class="wheel-name">Brkr-12</span><span class="wheel-ammo">6/30</span></button>
+    <button class="wheel-seg" data-slot="4"><span class="wheel-key">4</span><span class="wheel-name">Longshot</span><span class="wheel-ammo">8/40</span></button>
+    <div class="wheel-hub"><b>Weapon wheel</b><span>Click or press 0 to 4, release Q to close</span></div>
+  </div>
 </div>
 
 <div id="title-screen" class="screen">
@@ -234,7 +265,7 @@
   <p>Dario Cole got out. Nadia Cruz has a package at Palmera Pier and San Vega PD on speed dial. Walk the streets, steal a ride, lose the cops, run eight story jobs, settle things with Marco Ferro at the harbour.</p>
   <div class="controls">
     WASD move and drive, Shift sprint, Space jump and handbrake, mouse camera, E enter car,<br>
-    1 to 4 weapons, click fire, right-click aim, R reload, T radio, P pause
+    1 to 4 weapons, hold Q weapon wheel, click fire, right-click aim, R reload, T radio, P pause
   </div>
   <button id="btn-start">Start engine</button>
   <button id="btn-continue" class="secondary" style="display:none">Continue</button>
@@ -252,6 +283,6 @@
   <button id="btn-busted">Back on the streets</button>
 </div>
 
-<script type="module" src="./src/main.js"></script>
+<script type="module" src="./src/main.js?v=hotfix1"></script>
 </body>
 </html>

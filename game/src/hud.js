@@ -46,6 +46,15 @@ export function createHud() {
   const policePanel = el('police-panel');
   const policeCount = el('police-count');
   const policeSight = el('police-sight');
+  // HOTFIX: the "lose them" read-out — live text + progress bar, so the
+  // player can see WHY the cops are still coming and WHEN they stop.
+  const policeLose = el('police-lose');
+  const policeLoseText = el('police-lose-text');
+  const policeLoseFill = el('police-lose-fill');
+  // HOTFIX: the weapon wheel overlay (segments are static buttons in
+  // index.html; the HUD only fills their live name/ammo/active state).
+  const wheelEl = el('weapon-wheel');
+  const wheelSegs = wheelEl ? [...wheelEl.querySelectorAll('.wheel-seg')] : [];
   const dialogBox = el('dialog-box');
   const dialogPortrait = el('dialog-portrait-img');
   const dialogName = el('dialog-name');
@@ -134,8 +143,40 @@ export function createHud() {
       }
       html += '<div class="police-row dim"><span class="callsign">HAWK-1, air</span><span>—</span><span class="state state-spotlight">SPOTLIGHT</span></div>';
       policeList.innerHTML = html;
+      // HOTFIX: the escape read-out, from live numbers only. While any
+      // unit sees the player the bar is empty and the text says to break
+      // away; once the trail is cold the bar fills as the heat cools.
+      if (policeLose && policeLoseText && policeLoseFill) {
+        policeLose.style.display = 'block';
+        const pct = Math.round((info.losingProgress || 0) * 100);
+        policeLoseFill.style.width = `${pct}%`;
+        if (info.escapeState === 'pursuit') {
+          policeLoseText.textContent = 'SVPD in pursuit — break away and stay out of sight';
+        } else if (info.escapeState === 'searching') {
+          policeLoseText.textContent = `SVPD searching — stay hidden, losing them ${pct}%`;
+        } else {
+          policeLoseText.textContent = `Trail cold — losing them ${pct}%`;
+        }
+      }
     } else {
       policePanel.style.display = 'none';
+      if (policeLose) policeLose.style.display = 'none';
+    }
+    // HOTFIX: the weapon wheel, while open, shows the live weapon list
+    // (same data as the top-right slots) with the active one highlighted.
+    if (wheelEl) {
+      wheelEl.style.display = info.wheelOpen ? 'block' : 'none';
+      if (info.wheelOpen && info.weapons) {
+        for (let i = 0; i < wheelSegs.length && i < info.weapons.length; i += 1) {
+          const w = info.weapons[i];
+          const ammo = Number.isFinite(w.mag) ? `${w.mag}/${w.reserve}` : '∞';
+          wheelSegs[i].classList.toggle('active', !!w.active);
+          const nameEl = wheelSegs[i].querySelector('.wheel-name');
+          const ammoEl = wheelSegs[i].querySelector('.wheel-ammo');
+          if (nameEl) nameEl.textContent = titleCase(w.short);
+          if (ammoEl) ammoEl.textContent = ammo;
+        }
+      }
     }
     // v10: the prompt names the actual vehicle + theft ("Steal car",
     // "Steal bike", "Ride bike", "Enter car") — main.js owns the wording,
@@ -274,5 +315,26 @@ export function createHud() {
     hitTimer = 0.25;
   }
 
-  return { update, say, banner, hitmark };
+  // HOTFIX: the weapon wheel is driven by main.js (open/close state) —
+  // the HUD only paints it. showWheel fills the segments once from live
+  // weapon data; update() keeps the highlight fresh while it is open.
+  function showWheel(weapons) {
+    if (!wheelEl || !weapons) return;
+    for (let i = 0; i < wheelSegs.length && i < weapons.length; i += 1) {
+      const w = weapons[i];
+      const ammo = Number.isFinite(w.mag) ? `${w.mag}/${w.reserve}` : '∞';
+      wheelSegs[i].classList.toggle('active', !!w.active);
+      const nameEl = wheelSegs[i].querySelector('.wheel-name');
+      const ammoEl = wheelSegs[i].querySelector('.wheel-ammo');
+      if (nameEl) nameEl.textContent = titleCase(w.short);
+      if (ammoEl) ammoEl.textContent = ammo;
+    }
+    wheelEl.style.display = 'block';
+  }
+
+  function hideWheel() {
+    if (wheelEl) wheelEl.style.display = 'none';
+  }
+
+  return { update, say, banner, hitmark, showWheel, hideWheel };
 }

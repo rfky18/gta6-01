@@ -70,6 +70,10 @@ const state = {
   stoleCar: false,
   bustedCount: 0,
   kmh: 0,
+  // HOTFIX: seconds since any cop last saw the player (drives the
+  // "lose them" decay), and the weapon-wheel state (Q held).
+  unseenTimer: 0,
+  wheelOpen: false,
 };
 
 // v10: the vehicle Dario is driving right now — the hero Solaris, or any
@@ -323,7 +327,7 @@ function step(dt, silent) {
   traffic.update(dt, state.driving ? driven.state : null, police.state);
   pedestrians.update(dt, state.driving ? driven.state : player.state);
   const target = state.driving ? driven.state : player.state;
-  policeInfo = police.update(dt, target, state.wanted, state.time);
+  policeInfo = police.update(dt, target, state.wanted, state.time, !state.driving);
   // v9: ramming the roadblock costs condition, on top of the speed the
   // block itself already strips — going around stays the fast way through.
   if (policeInfo.roadblockHit && state.driving) driven.damage(1);
@@ -354,7 +358,8 @@ function step(dt, silent) {
       state.kmh = 0;
       player.setArmed(combat.state.slot > 0, input.aiming());
       // Shooting: left mouse, on foot. Semi-auto guns fire once per click.
-      if (!silent && input.firing()) {
+      // HOTFIX: not while the weapon wheel is open — the wheel owns the mouse.
+      if (!silent && input.firing() && !state.wheelOpen) {
         const w = combat.weapon();
         const freshClick = !prevFiring;
         if (w.auto || freshClick) {
@@ -381,14 +386,25 @@ function step(dt, silent) {
       audio.missionDone();
     }
     // Wanted decay: lose the cops by staying far away for a while.
+    // HOTFIX: the old rule (distance > 60 m only) could never fire on
+    // foot — a 36 m/s cruiser closes 60 m on an 8 m/s sprint in seconds,
+    // so the heat never dropped and the chase never ended (repro E2:
+    // crimeTimer stuck at 30 for a full minute on foot). Now the heat
+    // also cools while the trail is cold: no unit has seen the player
+    // for 5 s (unseenTimer, fed by police.update). Stay out of sight
+    // and the timer runs down; get spotted and it resets to 30.
     if (state.wanted > 0) {
-      if (policeInfo.distance > 60) state.crimeTimer -= dt;
+      if (policeInfo.distance > 60 || state.unseenTimer > 5) state.crimeTimer -= dt;
       else state.crimeTimer = 30;
       if (state.crimeTimer <= 0) {
         setWanted(0);
+        state.unseenTimer = 0;
         hud.banner('You lost the cops', 3);
       }
     }
+    // HOTFIX: the unseen clock lives in state (police.js owns the sight
+    // check, main.js owns the heat). Keep it in step with the live info.
+    state.unseenTimer = policeInfo.unseenFor || 0;
     if (policeInfo.busted && !silent) {
       busted();
       return;
@@ -455,35 +471,47 @@ function pushHud(dt) {
     weapons: combat.weaponInfo(),
     showCrosshair: !state.driving && combat.state.slot > 0,
     showInteract: state.missionNear || (!state.driving && !!nearestVehicle()),
-    // v10: the prompt names the actual vehicle and whether it is a theft.
-    interactLabel: state.missionNear
-      ? 'Do the job'
-      : (() => {
-        const v = state.driving ? null : nearestVehicle();
-        if (!v) return 'Enter vehicle';
+    // HOTFIX: when a vehicle is nearer than the mission beacon, the
+    // prompt names the vehicle — the mission no longer swallows E.
+    interactLabel: (() => {
+      const v = state.driving ? null : nearestVehicle();
+      if (v && (!state.missionNear || v.dist < state.missionDistance)) {
         if (v.isBike) return v.stolen ? 'Ride bike' : 'Steal bike';
         return v.stolen ? 'Enter car' : 'Steal car';
-      })(),
+      }
+      if (state.missionNear) return 'Do the job';
+      return 'Enter vehicle';
+    })(),
+    // HOTFIX: the "lose them" read-out — real numbers, never staged:
+    // 0..1 progress toward losing the heat (crimeTimer 30 -> 0) and
+    // whether any unit can still see the player.
+    losingProgress: state.wanted > 0 ? Math.max(0, Math.min(1, 1 - state.crimeTimer / 30)) : 0,
+    escapeState: state.wanted > 0 ? (policeInfo.seen ? 'pursuit' : (policeInfo.allSearching ? 'searching' : 'hiding')) : 'clear',
+    unseenFor: state.unseenTimer,
+    wheelOpen: state.wheelOpen,
   });
 }
 
 // v10 — the P0 fix. E used to work on exactly one car: the hero Solaris
-// within 4 m. Now the nearest enterable vehicle in a loose 5.5 m radius
-// wins — hero car, any parked car, any moving traffic car, any bike.
+// within 4 m. Now the nearest enterable vehicle in a loose radius wins —
+// hero car, any parked car, any moving traffic car, any bike.
 // `stolen` is per vehicle: the first theft of each one raises the heat.
+// HOTFIX: radius 5.5 -> 7 m (a steal prompt the player can walk past
+// without seeing is a prompt that does not exist), and the result carries
+// its distance so the mission-vs-vehicle priority is decided on numbers.
 function nearestVehicle() {
   if (state.driving) return null;
   let best = null;
-  let bestD = 5.5;
+  let bestD = 7;
   const dHero = Math.hypot(player.state.x - car.state.x, player.state.z - car.state.z);
   if (dHero < bestD) {
-    best = { kind: 'hero', name: car.state.name, stolen: state.stoleCar, isBike: false };
+    best = { kind: 'hero', name: car.state.name, stolen: state.stoleCar, isBike: false, dist: dHero };
     bestD = dHero;
   }
   for (const t of traffic.cars) {
     const d = Math.hypot(player.state.x - t.x, player.state.z - t.z);
     if (d < bestD) {
-      best = { kind: 'traffic', t, name: t.name, stolen: t.stolen, isBike: t.kind === 'bike' };
+      best = { kind: 'traffic', t, name: t.name, stolen: t.stolen, isBike: t.kind === 'bike', dist: d };
       bestD = d;
     }
   }
@@ -533,6 +561,14 @@ function handleInteract() {
     exitCar();
     return;
   }
+  // HOTFIX: a vehicle nearer than the mission beacon wins E — the old
+  // code checked missionNear first, so standing by a job spot with a car
+  // next to it stole the keypress for the mission instead of the car.
+  const v = nearestVehicle();
+  if (v && (!state.missionNear || v.dist < state.missionDistance)) {
+    enterVehicle(v);
+    return;
+  }
   if (state.missionNear) {
     const line = missions.interact();
     if (line) {
@@ -554,11 +590,41 @@ function handleInteract() {
     }
     return;
   }
-  const v = nearestVehicle();
   if (v) enterVehicle(v);
 }
 
+// HOTFIX — the weapon wheel (hold Q, GTA-style): the game slows to 15%
+// while it is open, it lists every owned weapon (all five — fists + the
+// four guns are owned from the start, nothing is locked), and it closes
+// with the selected weapon on Q release, Esc, or a click on a segment.
+function openWheel() {
+  if (state.wheelOpen || state.driving || state.screen !== 'play') return;
+  state.wheelOpen = true;
+  hud.showWheel(combat.weaponInfo());
+}
+
+function closeWheel() {
+  if (!state.wheelOpen) return;
+  state.wheelOpen = false;
+  hud.hideWheel();
+}
+
+// HOTFIX: a segment click picks the weapon AND closes the wheel — but Q
+// is still held, so without this latch the next frame would reopen it.
+// The latch suppresses reopening until Q is released.
+let wheelClickClosed = false;
+
+function selectWheelSlot(i) {
+  if (combat.switchWeapon(i)) player.setArmed(i > 0, input.aiming());
+  hud.showWheel(combat.weaponInfo());
+}
+
 function handleActions() {
+  // Weapon wheel: hold Q to open (on foot only), release Q to close with
+  // the selected weapon. Esc / P while open closes the wheel, not the game.
+  if (!input.wheelHeld()) wheelClickClosed = false;
+  if (state.screen === 'play' && !state.driving && input.wheelHeld() && !wheelClickClosed) openWheel();
+  else if (state.wheelOpen && !input.wheelHeld()) closeWheel();
   const actions = input.takeActions();
   if (actions & ACTION_ENTER) {
     if (state.screen === 'title') startGame(true);
@@ -569,7 +635,9 @@ function handleActions() {
     }
   }
   if (actions & ACTION_PAUSE) {
-    if (state.screen === 'play') {
+    if (state.wheelOpen) {
+      closeWheel();
+    } else if (state.screen === 'play') {
       state.screen = 'paused';
       document.getElementById('pause-screen').style.display = 'flex';
       doSave();
@@ -592,7 +660,9 @@ function frame(now) {
   requestAnimationFrame(frame);
   const dtMs = now - frame.last;
   frame.last = now;
-  const dt = Math.min(dtMs / 1000, MAX_FRAME);
+  // HOTFIX: the weapon wheel slows the world to 15% — GTA's beat to pick
+  // a gun without getting shot while you browse.
+  const dt = Math.min(dtMs / 1000, MAX_FRAME) * (state.wheelOpen ? 0.15 : 1);
   handleActions();
   if (state.screen === 'play' || state.screen === 'title') {
     let acc = (frame.acc || 0) + dt;
@@ -657,6 +727,12 @@ const game = {
   startDrivingAt,
   enterNearestVehicle,
   nearestVehicle,
+  openWheel,
+  closeWheel,
+  selectWheelSlot,
+  get wheelOpen() {
+    return state.wheelOpen;
+  },
   get driven() {
     return driven;
   },
@@ -672,6 +748,15 @@ window.__game = game;
 
 // Buttons on the title / pause / busted screens.
 document.getElementById('btn-start').addEventListener('click', () => startGame(true));
+// HOTFIX: weapon-wheel segments are real buttons — a click picks that
+// weapon and closes the wheel with it selected.
+document.querySelectorAll('#weapon-wheel .wheel-seg').forEach((seg) => {
+  seg.addEventListener('click', () => {
+    selectWheelSlot(Number(seg.dataset.slot));
+    closeWheel();
+    wheelClickClosed = true;
+  });
+});
 document.getElementById('btn-continue').addEventListener('click', () => {
   const saved = loadSave();
   if (saved) applySave(saved);
