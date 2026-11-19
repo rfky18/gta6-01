@@ -26,6 +26,7 @@ import { loadSave, saveGame } from './save.js';
 import { createRender } from './render.js';
 import { stageShot } from './shots.js';
 import { warmPortraits } from './portraits.js';
+import { loadGameAssets } from './assets.js';
 
 const MAX_FRAME = 0.25;
 const params = new URLSearchParams(window.location.search);
@@ -36,7 +37,10 @@ const seed = Number.isInteger(seedParam) ? seedParam : 1337;
 const canvas = document.getElementById('game');
 const status = document.getElementById('status');
 const render = createRender(canvas);
-const world = createWorld(render.scene, seed);
+// v5: preload the Pollinations assets (local files) before building the
+// world, so the sky/asphalt/billboard textures exist on the first paint.
+const assets = await loadGameAssets();
+const world = createWorld(render.scene, seed, assets);
 const player = createPlayer(render.scene, world);
 const car = createDrivableCar(render.scene, world, { body: 0xc01616, sport: true, name: 'Solaris GT' });
 const traffic = createTraffic(render.scene, seed, 12);
@@ -109,7 +113,7 @@ function clockText() {
   const mins = Math.floor(state.clockMinutes);
   const hh = Math.floor(mins / 60) % 24;
   const mm = mins % 60;
-  return `DAY 1  ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+  return `Day 1  ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
 }
 
 function streetName(x, z) {
@@ -120,11 +124,17 @@ function streetName(x, z) {
   return 'Palmera Drive';
 }
 
+// v5: REP titles are sentence case on screen ("Bay Hustler", not the
+// tracked-caps label the old HUD used) — the data stays uppercase in config.
+function titleCase(s) {
+  return String(s).toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function repTitle() {
   for (const t of REP_TITLES) {
-    if (state.rep >= t.min) return t.title;
+    if (state.rep >= t.min) return titleCase(t.title);
   }
-  return 'NOBODY';
+  return 'Nobody';
 }
 
 // REP progress toward the next title (0..1): REP 4 of 5 reads 80% full.
@@ -248,10 +258,10 @@ function showEndScreen(kind) {
   const h1 = screen.querySelector('h1');
   const p = screen.querySelector('p');
   if (kind === 'wasted') {
-    if (h1) h1.textContent = 'WASTED';
+    if (h1) h1.textContent = 'Wasted';
     if (p) p.textContent = 'Ferro’s crew left you in the gutter. A street doc patched you up for $100 — the night is young.';
   } else {
-    if (h1) h1.textContent = 'BUSTED';
+    if (h1) h1.textContent = 'Busted';
     if (p) p.textContent = 'SVPD caught up with you. They took $100 and dropped you at the garage. The night is young.';
   }
   screen.style.display = 'flex';
@@ -334,7 +344,7 @@ function step(dt, silent) {
     state.missionDistance = m ? m.distance : 999;
     if (m && m.combatCleared && m.line) {
       hud.say(m.line.speaker, m.line.text, 7);
-      hud.banner('AREA CLEAR', 3);
+      hud.banner('Area clear', 3);
       audio.missionDone();
     }
     // Wanted decay: lose the cops by staying far away for a while.
@@ -343,7 +353,7 @@ function step(dt, silent) {
       else state.crimeTimer = 30;
       if (state.crimeTimer <= 0) {
         setWanted(0);
-        hud.banner('YOU LOST THE COPS', 3);
+        hud.banner('You lost the cops', 3);
       }
     }
     if (policeInfo.busted && !silent) {
@@ -375,7 +385,7 @@ function pushHud(dt) {
     mission: missions.objective(),
     missionTimer: mt.parSeconds > 0 ? formatTimer(mt.remaining) : '',
     missionTimerLate: mt.remaining <= 30 && mt.parSeconds > 0,
-    missionPar: mt.parBonus > 0 ? `PAR BONUS +$${mt.parBonus.toLocaleString('en-US')}` : '',
+    missionPar: mt.parBonus > 0 ? `Par bonus +$${mt.parBonus.toLocaleString('en-US')}` : '',
     missionStage: missions.state.stage,
     missionDone: missions.state.done,
     money: state.money,
@@ -394,7 +404,7 @@ function pushHud(dt) {
     // 122 km/h — verified in the ?shot=play staging (v1 artifact of 1-8
     // km/h was the llvmpipe software renderer at ~0.3 fps, not the math).
     kmh: state.driving ? Math.abs(car.state.speed) * 3.6 : Math.abs(player.state.speed) * 3.6,
-    vehicle: state.driving ? car.state.name : 'ON FOOT',
+    vehicle: state.driving ? car.state.name : 'On foot',
     condition: car.state.condition,
     policeDistance: Math.hypot(police.state.x - pos.x, police.state.z - pos.z),
     policeMode: policeInfo.mode,
@@ -425,13 +435,13 @@ function handleInteract() {
         state.money += line.reward;
         state.rep += 1;
         audio.missionDone();
-        hud.banner(`MISSION COMPLETE — ${line.title}  +$${line.reward}`, 4);
+        hud.banner(`Mission complete: ${titleCase(line.title)}, +$${line.reward}`, 4);
         doSave();
         if (line.nextIntro) {
           window.setTimeout(() => hud.say(line.nextIntro.speaker, line.nextIntro.text, 8), 4500);
         }
         if (line.allDone) {
-          hud.banner('SAN VEGA LEGEND — ALL 8 JOBS DONE', 6);
+          hud.banner('San Vega Legend: all 8 jobs done', 6);
         }
       }
     }
@@ -446,7 +456,7 @@ function handleInteract() {
       state.stoleCar = true;
       setWanted(1);
       hud.say(GAME.fixerName, 'That Solaris isn’t yours, Dario — drive it like it is. SVPD is coming.', 6);
-      hud.banner('VEHICLE STOLEN — WANTED ★', 3);
+      hud.banner('Vehicle stolen, wanted ★', 3);
     }
   }
 }
@@ -476,7 +486,7 @@ function handleActions() {
   const radio = input.radioToggle();
   if (radio && !prevRadio) {
     const on = audio.toggleRadio();
-    hud.banner(on ? 'RADIO ON — NEON FM 101.3' : 'RADIO OFF', 2);
+    hud.banner(on ? 'Radio on: Neon FM 101.3' : 'Radio off', 2);
   }
   prevRadio = radio;
 }

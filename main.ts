@@ -34,7 +34,7 @@ if (existsSync(join(here, 'screenshots'))) cpSync(join(here, 'screenshots'), joi
 // (1.960 / 2.400 XP), mission timer 2:40 + PAR BONUS +$650, combat staged
 // at REP 4, warm orange sun, textured road, varied building windows,
 // sculpt pass 2 on the Solaris GT (steeper wedge, brighter headlights).
-const ENTRY_VERSION = 'v4 — MISSION 7/8 cover, REP XP + timer/PAR HUD, warm sun, road/building polish, car sculpt pass 2';
+const ENTRY_VERSION = 'v5 — Pollinations sunset sky + wet asphalt + SAN VEGA CITY billboard art + title art, Hallmark-token San Vega UI (sentence-case HUD, title-art title screen), sun haze + drooping img2threejs palms, bigger ferris wheel, Solaris GT rear stance';
 writeFileSync(
   join(out, 'dossier.json'),
   buildDossier(out, {

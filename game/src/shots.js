@@ -97,7 +97,7 @@ export function stageShot(game, name) {
     g.state.driving = false;
     g.player.mesh.visible = true;
     g.hud.say('Nadia Cruz', 'Two thousand, and the whole city saw you walk out of Ferro’s warehouse. San Vega is yours now, Dario.', 30);
-    g.hud.banner('MISSION COMPLETE — THE FINAL DEAL  +$2000', 30);
+    g.hud.banner('Mission complete: The Final Deal, +$2,000', 30);
     g.render.snapBehind(-Math.PI / 2, { x: -150, y: 0, z: 122 }, false);
     g.render.cam.yaw = Math.PI / 2;
     return 'play';
@@ -129,7 +129,7 @@ export function stageShot(game, name) {
     const target = { x: -182, y: 1.2, z: -172 };
     g.combat.stageFlash({ x: -180, y: 0, z: -150 }, dir, target);
     g.hud.say('Selma Ortiz', 'Ferro’s boys are here to take my crate. You’ve got a gun — use it.', 30);
-    g.hud.banner('DOCKSIDE TROUBLE — CLEAR THE DOCKS', 30);
+    g.hud.banner('Dockside Trouble: clear the docks', 30);
     return 'play';
   }
   if (name === 'street') {

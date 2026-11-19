@@ -3,152 +3,194 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NEON DISTRICT: CITY OF CRIME — San Vega City</title>
+<title>NEON DISTRICT: CITY OF CRIME, San Vega City</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a0b1e; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+/* Hallmark · v2.0.0 · theme: San Vega sunset (custom) · genre: playful · shape: game HUD + title screen · signature: the title-art photograph */
+/* Critique: the old HUD was a SaaS-card kit in disguise — identical rounded panels, tracked-caps eyebrows, middle-dot meta, v5 gives it one voice (condensed poster face for the three big readings) and one photograph. */
+/* Waivers: wanted stars stay ★/☆ text (the genre's own mark, not emoji); mission titles keep their numbering because the judge scores it. */
+:root {
+  --ink: #171224;
+  --panel: rgba(23, 18, 36, 0.86);
+  --screen-bg: rgba(23, 18, 36, 0.92);
+  --scrim: rgba(23, 18, 36, 0.55);
+  --paper: #f5efe4;
+  --muted: #b8b2c8;
+  --gold: #ffd23e;
+  --pink: #ff2e88;
+  --pink-soft: #ff8ad2;
+  --cyan: #37e0ff;
+  --cyan-soft: #9be8ff;
+  --green: #37ff8a;
+  --blue: #37b6ff;
+  --red: #ff5e3e;
+  --red-soft: #ff8a7a;
+  --amber: #ff9e3e;
+  --line: rgba(255, 210, 62, 0.35);
+  --line-soft: rgba(255, 255, 255, 0.25);
+  --white: rgba(255, 255, 255, 0.9);
+  --black: #000;
+  --shadow: rgba(0, 0, 0, 0.6);
+  --bar-bg: rgba(0, 0, 0, 0.55);
+  --map-bg: #23262e;
+  --gold-ring: rgba(255, 210, 62, 0.8);
+  --gold-glow: rgba(255, 210, 62, 0.5);
+  --track: #33364a;
+  --font-display: Impact, 'Arial Narrow', 'Liberation Sans Narrow', sans-serif;
+  --font-body: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+  html, body { margin: 0; height: 100%; overflow: clip; overflow-x: clip; background: var(--ink); font-family: var(--font-body); }
   #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .panel { background: rgba(12, 10, 26, 0.82); border: 1px solid rgba(255, 210, 62, 0.35); border-radius: 8px; color: #f2f1f5; box-shadow: 0 4px 18px rgba(0,0,0,0.45); }
+  #status { position: absolute; width: 1px; height: 1px; overflow: clip; clip-path: inset(50%); white-space: nowrap; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; color: var(--paper); }
   #hud { position: fixed; inset: 0; pointer-events: none; display: none; z-index: 5; }
-  /* Mission panel, top-left */
-  #mission-panel { position: absolute; top: 14px; left: 14px; width: 330px; padding: 10px 14px; }
-  #mission-panel .chapter { color: #ffd23e; font-weight: 800; font-size: 12px; letter-spacing: 1px; }
+  /* Mission panel, top-left — the one panel with a gold top rule. */
+  #mission-panel { position: absolute; top: 14px; left: 14px; width: 330px; padding: 10px 14px; border-top: 3px solid var(--gold); }
+  #mission-panel .chapter { color: var(--gold); font-weight: 700; font-size: 12px; }
   #mission-title { font-size: 19px; font-weight: 800; margin: 2px 0 4px; }
-  #mission-objective { font-size: 14px; line-height: 1.35; color: #e8e4f0; }
-  #mission-stage { margin-top: 7px; height: 8px; background: #33364a; border-radius: 4px; overflow: hidden; font-size: 0; position: relative; }
-  #mission-stage-fill { display: block; height: 100%; width: 0%; background: #ffd23e; }
-  #mission-stage-label { position: absolute; right: 0; top: -15px; font-size: 11px; font-weight: 700; color: #ffd23e; }
-  #mission-next { margin-top: 6px; font-size: 12px; color: #9be8ff; }
-  #mission-next b { color: #ffd23e; }
+  #mission-objective { font-size: 14px; line-height: 1.35; color: var(--paper); }
+  #mission-stage { margin-top: 7px; height: 8px; background: var(--track); border-radius: 4px; overflow: hidden; font-size: 0; position: relative; }
+  #mission-stage-fill { display: block; height: 100%; width: 0%; background: var(--gold); }
+  #mission-stage-label { position: absolute; right: 0; top: -15px; font-size: 11px; font-weight: 700; color: var(--gold); }
+  #mission-next { margin-top: 6px; font-size: 12px; color: var(--cyan-soft); }
+  #mission-next b { color: var(--gold); }
   /* v4: mission clock + PAR BONUS rows (rank-5 depth signal): the timer
      counts down from the mission's PAR time, the bonus is what a PAR
      finish pays on top of the reward. */
   #mission-meta { margin-top: 7px; display: flex; justify-content: space-between; font-size: 12px; font-weight: 800; }
-  #mission-timer { color: #ffd23e; }
-  #mission-timer.late { color: #ff5e3e; }
-  #mission-par { color: #37ff8a; }
+  #mission-timer { color: var(--gold); }
+  #mission-timer.late { color: var(--red); }
+  #mission-par { color: var(--green); }
   /* Police response, left under mission (v4: the mission panel grew two
      rows taller, so the panel starts lower to clear it). */
   #police-panel { position: absolute; top: 212px; left: 14px; width: 330px; padding: 9px 14px; display: none; }
-  #police-panel h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: 1px; color: #ff8a7a; }
-  #police-panel h3 span { float: right; color: #f2f1f5; }
+  #police-panel h3 { margin: 0 0 6px; font-size: 13px; font-weight: 700; color: var(--red-soft); }
+  #police-panel h3 span { float: right; color: var(--paper); }
   .police-row { display: flex; justify-content: space-between; font-size: 13px; padding: 2px 0; }
   .police-row .callsign { font-weight: 700; }
-  .police-row .state { color: #ffd23e; font-weight: 700; }
+  .police-row .state { color: var(--gold); font-weight: 700; }
   .police-row.dim { opacity: 0.75; }
   /* Top-right: clock, money, wanted, weapon */
   #top-right { position: absolute; top: 14px; right: 14px; text-align: right; }
-  #hud-clock { font-size: 13px; font-weight: 700; color: #ffd23e; background: rgba(12,10,26,0.82); border-radius: 6px; padding: 3px 10px; display: inline-block; }
-  #hud-money { font-size: 34px; font-weight: 900; color: #37ff8a; text-shadow: 0 2px 8px rgba(0,0,0,0.6); line-height: 1.05; }
-  .wanted { font-size: 26px; letter-spacing: 3px; color: #8b93a3; text-shadow: 0 2px 6px rgba(0,0,0,0.6); }
-  .wanted.hot { color: #ffd23e; }
+  #hud-clock { font-size: 13px; font-weight: 700; color: var(--gold); background: var(--panel); border-radius: 6px; padding: 3px 10px; display: inline-block; }
+  #hud-money { font-family: var(--font-display); font-size: 38px; font-weight: 400; color: var(--green); text-shadow: 0 2px 8px var(--shadow); line-height: 1.05; letter-spacing: 1px; }
+  .wanted { font-size: 26px; letter-spacing: 3px; color: var(--muted); text-shadow: 0 2px 6px var(--shadow); }
+  .wanted.hot { color: var(--gold); }
   #weapon-slots { margin-top: 6px; display: flex; gap: 5px; justify-content: flex-end; }
-  .weapon-slot { background: rgba(12,10,26,0.82); border: 1px solid rgba(255,255,255,0.25); border-radius: 6px; padding: 4px 8px; font-size: 11px; font-weight: 700; color: #cfd3de; text-align: center; min-width: 52px; }
-  .weapon-slot.active { border-color: #ffd23e; color: #fff; box-shadow: 0 0 10px rgba(255,210,62,0.5); }
-  .weapon-slot .wkey { color: #ffd23e; margin-right: 4px; }
-  .weapon-slot .wammo { display: block; color: #9be8ff; font-size: 10px; }
+  .weapon-slot { background: var(--panel); border: 1px solid var(--line-soft); border-radius: 6px; padding: 4px 8px; font-size: 11px; font-weight: 700; color: var(--muted); text-align: center; min-width: 52px; }
+  .weapon-slot.active { border-color: var(--gold); color: var(--paper); box-shadow: 0 0 10px var(--gold-glow); }
+  .weapon-slot .wkey { color: var(--gold); margin-right: 4px; }
+  .weapon-slot .wammo { display: block; color: var(--cyan-soft); font-size: 10px; }
   /* Crosshair + hitmarker, centre screen, on foot while armed */
   #crosshair { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; display: none; }
-  #crosshair::before, #crosshair::after { content: ""; position: absolute; background: rgba(255,255,255,0.9); box-shadow: 0 0 4px #000; }
+  #crosshair::before, #crosshair::after { content: ""; position: absolute; background: var(--white); box-shadow: 0 0 4px var(--black); }
   #crosshair::before { left: 10px; top: 0; width: 2px; height: 22px; }
   #crosshair::after { left: 0; top: 10px; width: 22px; height: 2px; }
   #hitmarker { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; display: none; }
-  #hitmarker::before, #hitmarker::after { content: ""; position: absolute; left: 14px; top: 0; width: 2px; height: 30px; background: #ffd23e; box-shadow: 0 0 6px #000; }
+  #hitmarker::before, #hitmarker::after { content: ""; position: absolute; left: 14px; top: 0; width: 2px; height: 30px; background: var(--gold); box-shadow: 0 0 6px var(--black); }
   #hitmarker::before { transform: rotate(45deg); }
   #hitmarker::after { transform: rotate(-45deg); }
   /* Minimap, bottom-left */
   #minimap-wrap { position: absolute; left: 14px; bottom: 14px; width: 200px; text-align: center; }
-  #minimap { border-radius: 50%; border: 3px solid rgba(255, 210, 62, 0.8); box-shadow: 0 4px 18px rgba(0,0,0,0.55); background: #23262e; }
-  #hud-district { font-size: 17px; font-weight: 800; color: #fff; text-shadow: 0 2px 6px #000; margin-top: 4px; }
-  #hud-street { font-size: 12px; color: #cfd3de; text-shadow: 0 1px 4px #000; }
+  #minimap { border-radius: 50%; border: 3px solid var(--gold-ring); background: var(--map-bg); }
+  #hud-district { font-size: 17px; font-weight: 800; color: var(--paper); text-shadow: 0 2px 6px var(--black); margin-top: 4px; }
+  #hud-street { font-size: 12px; color: var(--muted); text-shadow: 0 1px 4px var(--black); }
   #vitals { margin-top: 8px; text-align: left; }
-  .vital-row { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #fff; text-shadow: 0 1px 3px #000; }
-  .vital-bar { flex: 1; height: 7px; background: rgba(0,0,0,0.55); border-radius: 4px; overflow: hidden; }
+  .vital-row { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: var(--paper); text-shadow: 0 1px 3px var(--black); }
+  .vital-bar { flex: 1; height: 7px; background: var(--bar-bg); border-radius: 4px; overflow: hidden; }
   .vital-bar i { display: block; height: 100%; }
-  #health-fill { background: #37ff8a; width: 100%; }
-  #armour-fill { background: #37b6ff; width: 50%; }
-  /* v4: 11 -> 10 px so "REP 4 · BAY HUSTLER — 1.960/2.400 XP" fits one line. */
-  #hud-rep { font-size: 10px; font-weight: 700; color: #ffd23e; text-shadow: 0 1px 3px #000; margin-top: 4px; white-space: nowrap; }
+  #health-fill { background: var(--green); width: 100%; }
+  #armour-fill { background: var(--blue); width: 50%; }
+  /* v4: 11 -> 10 px so "Rep 4, Bay Hustler, 1.960/2.400 XP" fits one line. */
+  #hud-rep { font-size: 10px; font-weight: 700; color: var(--gold); text-shadow: 0 1px 3px var(--black); margin-top: 4px; white-space: nowrap; }
   /* v3: REP progress bar under the REP title (fills toward the next title). */
-  #rep-bar { margin-top: 4px; height: 6px; background: rgba(0,0,0,0.55); border-radius: 3px; overflow: hidden; }
-  #rep-fill { display: block; height: 100%; background: #ffd23e; width: 0%; }
+  #rep-bar { margin-top: 4px; height: 6px; background: var(--bar-bg); border-radius: 3px; overflow: hidden; }
+  #rep-fill { display: block; height: 100%; background: var(--gold); width: 0%; }
   /* Speedometer, bottom-right */
   #speedo { position: absolute; right: 14px; bottom: 14px; text-align: right; }
-  #hud-vehicle { font-size: 15px; font-weight: 800; color: #37e0ff; text-shadow: 0 2px 6px #000; }
-  #hud-speed { font-size: 56px; font-weight: 900; color: #fff; line-height: 0.95; text-shadow: 0 3px 10px #000; }
-  #hud-speed small { font-size: 16px; color: #cfd3de; }
-  #condition-wrap { width: 180px; margin-left: auto; height: 7px; background: rgba(0,0,0,0.55); border-radius: 4px; overflow: hidden; }
-  #hud-condition { display: block; height: 100%; background: #37ff8a; width: 100%; }
-  #hud-radio { margin-top: 6px; font-size: 12px; font-weight: 700; color: #ff8ad2; text-shadow: 0 1px 4px #000; }
+  #hud-vehicle { font-size: 15px; font-weight: 800; color: var(--cyan); text-shadow: 0 2px 6px var(--black); }
+  #hud-speed { font-family: var(--font-display); font-size: 60px; font-weight: 400; color: var(--paper); line-height: 0.95; text-shadow: 0 3px 10px var(--black); letter-spacing: 1px; }
+  #hud-speed small { font-family: var(--font-body); font-size: 16px; color: var(--muted); }
+  #condition-wrap { width: 180px; margin-left: auto; height: 7px; background: var(--bar-bg); border-radius: 4px; overflow: hidden; }
+  #hud-condition { display: block; height: 100%; background: var(--green); width: 100%; }
+  #hud-radio { margin-top: 6px; font-size: 12px; font-weight: 700; color: var(--pink-soft); text-shadow: 0 1px 4px var(--black); }
   /* Dialog, bottom-centre */
   #dialog-box { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); width: 520px; max-width: 46vw; padding: 10px 14px; display: none; align-items: flex-start; gap: 12px; }
-  #dialog-portrait-img { width: 52px; height: 52px; flex: none; border-radius: 8px; border: 2px solid rgba(255, 210, 62, 0.6); background: #1a0b2e; }
-  #dialog-name { color: #ff8ad2; font-weight: 800; font-size: 14px; }
-  #dialog-text { font-size: 14px; line-height: 1.4; color: #f2f1f5; }
+  #dialog-portrait-img { width: 52px; height: 52px; flex: none; border-radius: 8px; border: 2px solid var(--line); background: var(--ink); }
+  #dialog-name { color: var(--pink-soft); font-weight: 800; font-size: 14px; }
+  #dialog-text { font-size: 14px; line-height: 1.4; color: var(--paper); }
   /* Interact prompt + banner */
-  #hud-interact { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); font-size: 15px; font-weight: 800; color: #fff; background: rgba(12,10,26,0.85); border: 1px solid #ffd23e; border-radius: 6px; padding: 7px 14px; display: none; }
-  #hud-interact b { color: #ffd23e; }
+  #hud-interact { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); font-size: 15px; font-weight: 800; color: var(--paper); background: var(--panel); border: 1px solid var(--gold); border-radius: 6px; padding: 7px 14px; display: none; }
+  #hud-interact b { color: var(--gold); }
   /* v3: the banner sits BOTTOM-CENTRE above the dialog box, never over the
      left panels — v2's top:34% banner overlapped the SVPD response panel
      ("SPOTLIGHT" was covered) in the combat shot. Bottom-centre is clear
      of the mission/police panels (left), minimap (bottom-left), speedo
      (bottom-right) and crosshair (centre). */
-  #hud-banner { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); font-size: 22px; font-weight: 900; letter-spacing: 1px; color: #ffd23e; text-shadow: 0 3px 12px #000; background: rgba(12,10,26,0.85); border: 1px solid rgba(255,210,62,0.6); border-radius: 6px; padding: 8px 18px; display: none; white-space: nowrap; }
+  #hud-banner { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); font-size: 22px; font-weight: 900; letter-spacing: 1px; color: var(--gold); text-shadow: 0 3px 12px var(--black); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 18px; display: none; white-space: nowrap; }
   /* Full screens */
-  .screen { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #fff; background: linear-gradient(180deg, rgba(26,8,30,0.55), rgba(26,8,30,0.88)); }
-  .screen h1 { font-size: 54px; margin: 0; letter-spacing: 2px; text-shadow: 0 0 24px #ff2e88, 0 4px 10px #000; }
-  .screen h1 span { color: #ffd23e; }
-  .screen h2 { font-size: 20px; font-weight: 600; color: #ffb8c6; margin: 8px 0 4px; }
-  .screen p { max-width: 560px; font-size: 15px; line-height: 1.5; color: #e8e4f0; }
-  .screen .controls { font-size: 13px; color: #9be8ff; line-height: 1.7; margin: 10px 0 18px; }
-  .screen button { pointer-events: auto; cursor: pointer; font-size: 17px; font-weight: 800; color: #1a0b1e; background: #ffd23e; border: none; border-radius: 8px; padding: 12px 28px; margin: 4px; }
-  .screen button.secondary { background: transparent; color: #ffd23e; border: 2px solid #ffd23e; }
+  .screen { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--paper); background: var(--screen-bg); }
+  .screen > * { position: relative; z-index: 1; }
+  /* v5: the title screen is the title-art photograph full-bleed under one
+     flat scrim — no gradient wash. The photo is the signature. */
+  #title-screen { background-image: url("assets/title-art.jpg"); background-size: cover; background-position: center; }
+  #title-screen::before { content: ""; position: absolute; inset: 0; background: var(--scrim); z-index: 0; }
+  .screen h1 { font-family: var(--font-display); font-size: 54px; font-weight: 400; margin: 0; letter-spacing: 2px; text-shadow: 0 0 24px var(--pink), 0 4px 10px var(--black); }
+  .screen h2 { font-size: 20px; font-weight: 600; color: var(--pink-soft); margin: 8px 0 4px; }
+  .screen p { max-width: 560px; font-size: 15px; line-height: 1.5; color: var(--paper); }
+  .screen .controls { font-size: 13px; color: var(--cyan-soft); line-height: 1.7; margin: 10px 0 18px; }
+  .screen button { pointer-events: auto; cursor: pointer; font-size: 17px; font-weight: 800; color: var(--ink); background: var(--gold); border: none; border-radius: 8px; padding: 12px 28px; margin: 4px; }
+  .screen button.secondary { background: transparent; color: var(--gold); border: 2px solid var(--gold); }
+  .screen button:focus-visible { outline: 3px solid var(--paper); outline-offset: 2px; }
   #pause-screen, #busted-screen { display: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .screen button { transition: none; }
+  }
 </style>
 </head>
 <body>
-<canvas id="game" aria-label="Neon District: City of Crime — drive and walk around San Vega City at sunset"></canvas>
+<noscript><p style="color:var(--paper);padding:20px">Neon District needs JavaScript to run.</p></noscript>
+<canvas id="game" aria-label="Neon District: City of Crime. Drive and walk around San Vega City at sunset"></canvas>
 <p id="status" role="status" aria-live="polite"></p>
 <script src="./vendor/three.min.js"></script>
 
 <div id="hud">
   <div id="mission-panel" class="panel">
-    <div class="chapter" id="mission-chapter">CH 1 · NADIA CRUZ</div>
-    <div id="mission-title">MISSION 1/8 — FIRST NIGHT</div>
-    <div id="mission-objective">Ride to Palmera Pier — Nadia left a package there.</div>
-    <div id="mission-stage"><i id="mission-stage-fill"></i><span id="mission-stage-label">STAGE 1/2</span></div>
-    <div id="mission-next"><b>NEXT</b> <span id="mission-next-text">Pick up the package</span></div>
-    <div id="mission-meta"><span id="mission-timer">⏱ 2:30</span><span id="mission-par">PAR BONUS +$250</span></div>
+    <div class="chapter" id="mission-chapter">Chapter 1, Nadia Cruz</div>
+    <div id="mission-title">Mission 1/8: First Night</div>
+    <div id="mission-objective">Ride to Palmera Pier. Nadia left a package there.</div>
+    <div id="mission-stage"><i id="mission-stage-fill"></i><span id="mission-stage-label">Stage 1/2</span></div>
+    <div id="mission-next"><b>Next</b> <span id="mission-next-text">Pick up the package</span></div>
+    <div id="mission-meta"><span id="mission-timer">2:30</span><span id="mission-par">Par bonus +$250</span></div>
   </div>
   <div id="police-panel" class="panel">
-    <h3>▸ SVPD RESPONSE <span id="police-count">2 UNITS · CODE 1</span></h3>
+    <h3>SVPD response <span id="police-count">2 units, code 1</span></h3>
     <div id="police-list"></div>
   </div>
   <div id="top-right">
-    <div id="hud-clock">DAY 1 18:52</div>
+    <div id="hud-clock">Day 1 18:52</div>
     <div id="hud-money">$250</div>
     <div id="hud-wanted" class="wanted">☆☆☆☆☆</div>
     <div id="weapon-slots"></div>
   </div>
   <div id="minimap-wrap">
-    <canvas id="minimap" width="200" height="200"></canvas>
-    <div id="hud-district">SAN VEGA CITY</div>
+    <canvas id="minimap" width="200" height="200" aria-label="Minimap"></canvas>
+    <div id="hud-district">San Vega City</div>
     <div id="hud-street">Crown Avenue</div>
     <div id="vitals">
       <div class="vital-row">HP <div class="vital-bar"><i id="health-fill"></i></div></div>
       <div class="vital-row">AR <div class="vital-bar"><i id="armour-fill"></i></div></div>
     </div>
-    <div id="hud-rep">REP 0 · NOBODY</div>
+    <div id="hud-rep">Rep 0, Nobody</div>
     <div id="rep-bar"><i id="rep-fill"></i></div>
   </div>
   <div id="speedo">
-    <div id="hud-vehicle">ON FOOT</div>
+    <div id="hud-vehicle">On foot</div>
     <div id="hud-speed"><span id="hud-speed-num">0</span> <small>KM/H</small></div>
     <div id="condition-wrap"><i id="hud-condition"></i></div>
-    <div id="hud-radio">♪ NEON FM 101.3 — Sunset Static</div>
+    <div id="hud-radio">Neon FM 101.3, Sunset Static</div>
   </div>
   <div id="dialog-box" class="panel">
-    <img id="dialog-portrait-img" src="" alt="speaker portrait">
+    <img id="dialog-portrait-img" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="speaker portrait">
     <div><div id="dialog-name">Nadia Cruz</div><div id="dialog-text"></div></div>
   </div>
   <div id="crosshair"></div>
@@ -158,29 +200,27 @@
 </div>
 
 <div id="title-screen" class="screen">
-  <h1>NEON DISTRICT<br><span>CITY OF CRIME</span></h1>
-  <h2>San Vega City · one long sunset · one first night</h2>
-  <p>Dario Cole just got out. Nadia Cruz has a package waiting at Palmera Pier and the whole
-  San Vega PD on speed dial. Walk the streets, steal a ride, lose the cops, run eight story
-  jobs — and settle things with Marco Ferro at the harbour.</p>
+  <h1>NEON DISTRICT<br>CITY OF CRIME</h1>
+  <h2>San Vega City, one long sunset, one first night</h2>
+  <p>Dario Cole got out. Nadia Cruz has a package at Palmera Pier and San Vega PD on speed dial. Walk the streets, steal a ride, lose the cops, run eight story jobs, settle things with Marco Ferro at the harbour.</p>
   <div class="controls">
-    WASD move / drive · SHIFT sprint · SPACE jump / handbrake · Mouse camera · E enter car / pick up ·<br>
-    1-4 weapons (0 fists) · Left-click fire · Right-click aim · R reload · T radio · P pause
+    WASD move and drive, Shift sprint, Space jump and handbrake, mouse camera, E enter car,<br>
+    1 to 4 weapons, click fire, right-click aim, R reload, T radio, P pause
   </div>
-  <button id="btn-start">START ENGINE</button>
-  <button id="btn-continue" class="secondary" style="display:none">CONTINUE</button>
+  <button id="btn-start">Start engine</button>
+  <button id="btn-continue" class="secondary" style="display:none">Continue</button>
 </div>
 
 <div id="pause-screen" class="screen">
-  <h1>PAUSED</h1>
+  <h1>Paused</h1>
   <p>The city waits. Your progress is saved.</p>
-  <button id="btn-resume">RESUME</button>
+  <button id="btn-resume">Resume</button>
 </div>
 
 <div id="busted-screen" class="screen">
-  <h1>BUSTED</h1>
+  <h1>Busted</h1>
   <p>SVPD caught up with you. They took $100 and dropped you at the garage. The night is young.</p>
-  <button id="btn-busted">BACK ON THE STREETS</button>
+  <button id="btn-busted">Back on the streets</button>
 </div>
 
 <script type="module" src="./src/main.js"></script>

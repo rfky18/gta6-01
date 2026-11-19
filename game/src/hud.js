@@ -15,6 +15,11 @@ import { portraitDataURI } from './portraits.js';
 import { clamp01 } from './random.js';
 
 export function createHud() {
+  // v5: persistent HUD labels are sentence case, no middle-dot meta joins,
+  // no emoji icons — the mission content (number + name) stays fully legible.
+  function titleCase(s) {
+    return String(s).toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+  }
   const el = (id) => document.getElementById(id);
   const chapterEl = el('mission-chapter');
   const missionTitle = el('mission-title');
@@ -63,17 +68,17 @@ export function createHud() {
 
   function update(info) {
     const m = info.mission;
-    chapterEl.textContent = `${m.chapter} · ${m.giver ? m.giver.toUpperCase() : ''}`;
-    missionTitle.textContent = `MISSION ${m.index + 1}/${m.total} — ${m.title}`;
+    chapterEl.textContent = `Chapter ${String(m.chapter).replace('CH ', '')}, ${m.giver || ''}`;
+    missionTitle.textContent = `Mission ${m.index + 1}/${m.total}: ${titleCase(m.title)}`;
     missionObjective.textContent = m.objective;
-    missionStage.textContent = m.total && m.index >= m.total ? 'COMPLETE' : `STAGE ${Math.min(m.stage + 1, m.stages)}/${m.stages}`;
+    missionStage.textContent = m.total && m.index >= m.total ? 'Complete' : `Stage ${Math.min(m.stage + 1, m.stages)}/${m.stages}`;
     if (missionStageFill) missionStageFill.style.width = `${Math.round((m.progress || 0) * 100)}%`;
     missionNext.textContent = m.next;
     // v4: mission clock + PAR BONUS (rank-5 depth signal). The timer counts
     // down from the mission's PAR time; under 30 s it turns red. No PAR on
     // a finished arc (end shot) reads as a dash, not a stale number.
     if (missionTimerEl) {
-      missionTimerEl.textContent = info.missionTimer ? `⏱ ${info.missionTimer}` : '—';
+      missionTimerEl.textContent = info.missionTimer ? info.missionTimer : '—';
       missionTimerEl.className = info.missionTimerLate ? 'late' : '';
     }
     if (missionParEl) missionParEl.textContent = info.missionPar || '—';
@@ -83,9 +88,9 @@ export function createHud() {
     clockEl.textContent = info.clock;
     healthBar.style.width = `${Math.max(0, info.health)}%`;
     armourBar.style.width = `${Math.max(0, info.armour)}%`;
-    // v4: REP line now carries the XP numbers — "REP 4 · BAY HUSTLER —
-    // 1.960 / 2.400 XP" — so the bar's 80% has a readable figure next to it.
-    repEl.textContent = info.repXpText ? `REP ${info.rep}  ·  ${info.repTitle}  —  ${info.repXpText}` : `REP ${info.rep}  ·  ${info.repTitle}`;
+    // v4: REP line now carries the XP numbers — "Rep 4, Bay Hustler,
+    // 1.960/2.400 XP" — so the bar's 80% has a readable figure next to it.
+    repEl.textContent = info.repXpText ? `Rep ${info.rep}, ${info.repTitle}, ${info.repXpText}` : `Rep ${info.rep}, ${info.repTitle}`;
     // v3: REP progress bar — fills toward the next title (REP 4/5 on the
     // cover reads as nearly maxed, not empty).
     if (repFill) repFill.style.width = `${Math.round(clamp01(info.repProgress === undefined ? info.rep / 5 : info.repProgress) * 100)}%`;
@@ -94,14 +99,14 @@ export function createHud() {
     speedEl.textContent = String(Math.round(info.kmh));
     vehicleEl.textContent = info.vehicle;
     conditionEl.style.width = `${Math.max(0, info.condition)}%`;
-    radioEl.textContent = `${GAME.radioStation} — ${GAME.radioTrack}`;
+    radioEl.textContent = `${GAME.radioStation}, ${GAME.radioTrack}`;
     // Weapon slots: 0 fists + 4 guns, live ammo, active slot highlighted.
     if (info.weapons && weaponSlotsEl) {
       let html = '';
       for (let i = 0; i < info.weapons.length; i += 1) {
         const w = info.weapons[i];
         const ammo = Number.isFinite(w.mag) ? `${w.mag}/${w.reserve}` : '∞';
-        html += `<div class="weapon-slot${w.active ? ' active' : ''}"><span class="wkey">${i}</span><span class="wname">${w.short}</span><span class="wammo">${ammo}${w.reloading ? ' · RELOADING' : ''}</span></div>`;
+        html += `<div class="weapon-slot${w.active ? ' active' : ''}"><span class="wkey">${i}</span><span class="wname">${w.short}</span><span class="wammo">${ammo}${w.reloading ? ', reloading' : ''}</span></div>`;
       }
       weaponSlotsEl.innerHTML = html;
     }
@@ -109,12 +114,12 @@ export function createHud() {
     if (info.wanted > 0) {
       policePanel.style.display = 'block';
       const units = info.policeUnits && info.policeUnits.length ? info.policeUnits : [{ callsign: 'VIPER-4', distance: info.policeDistance, mode: info.policeMode }];
-      if (policeCount) policeCount.textContent = `${units.length + 1} UNITS · CODE ${info.wanted}`;
+      if (policeCount) policeCount.textContent = `${units.length + 1} units, code ${info.wanted}`;
       let html = '';
       for (const u of units) {
-        html += `<div class="police-row"><span class="callsign">${u.callsign}</span><span>${Math.round(u.distance)} m</span><span class="state">${u.mode}</span></div>`;
+        html += `<div class="police-row"><span class="callsign">${u.callsign}</span><span>${Math.round(u.distance)} m</span><span class="state">${titleCase(u.mode)}</span></div>`;
       }
-      html += '<div class="police-row dim"><span class="callsign">HAWK-1 · AIR</span><span>—</span><span class="state">SPOTLIGHT</span></div>';
+      html += '<div class="police-row dim"><span class="callsign">HAWK-1, air</span><span>—</span><span class="state">Spotlight</span></div>';
       policeList.innerHTML = html;
     } else {
       policePanel.style.display = 'none';

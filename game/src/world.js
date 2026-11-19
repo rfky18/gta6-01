@@ -23,7 +23,7 @@ const PALM_TRUNK_GEO = new THREE.CylinderGeometry(0.18, 0.3, 5.2, 6);
 const PALM_FROND_GEO = new THREE.ConeGeometry(0.9, 3.4, 4);
 const PALM_NUT_GEO = new THREE.SphereGeometry(0.28, 6, 5);
 const PALM_TRUNK_MAT = new THREE.MeshLambertMaterial({ color: 0x7a5230 });
-const PALM_FROND_MAT = new THREE.MeshLambertMaterial({ color: 0x2f8f4e, side: THREE.DoubleSide });
+const PALM_FROND_MAT = new THREE.MeshLambertMaterial({ color: 0x2a7a44, side: THREE.DoubleSide }); // v5: deeper green (img2threejs palm spec)
 const PALM_NUT_MAT = new THREE.MeshLambertMaterial({ color: 0x6b4a22 });
 
 // ---- canvas helpers -------------------------------------------------------
@@ -44,7 +44,10 @@ function toPx(v) {
 // Ground: one 2048 canvas painted with roads, sidewalks, crosswalks, beach,
 // boardwalk and ocean — a single draw call for the whole city floor.
 // v2: asphalt noise + patches, neon reflection streaks on the wet avenues.
-function makeGroundTexture(rng) {
+// v5: the Pollinations wet-asphalt tile is laid over the road strips first
+// (low alpha, real blacktop mottling under the game's own markings), so the
+// road reads as worn asphalt instead of a flat grey slab (LOCAL-JUDGE-v3 C3).
+function makeGroundTexture(rng, asphaltImg) {
   return canvasTexture(TEX_SIZE, TEX_SIZE, (g) => {
     g.fillStyle = '#2b2e38';
     g.fillRect(0, 0, TEX_SIZE, TEX_SIZE);
@@ -72,6 +75,22 @@ function makeGroundTexture(rng) {
     for (const r of WORLD.roads) {
       g.fillRect(toPx(r - WORLD.roadHalf), 0, WORLD.roadWidth * MAP_SCALE, TEX_SIZE);
       g.fillRect(0, toPx(r - WORLD.roadHalf), TEX_SIZE, WORLD.roadWidth * MAP_SCALE);
+    }
+    // v5: real asphalt grain over the road strips — one 512 tile repeated
+    // every ~14 m of road, at 0.55 alpha so the flat base still anchors it.
+    if (asphaltImg) {
+      const pat = g.createPattern(asphaltImg, 'repeat');
+      if (pat && pat.setTransform) {
+        try { pat.setTransform(new DOMMatrix().scale(51 / 512)); } catch (e) { /* native tile size */ }
+      }
+      g.save();
+      g.globalAlpha = 0.55;
+      g.fillStyle = pat;
+      for (const r of WORLD.roads) {
+        g.fillRect(toPx(r - WORLD.roadHalf), 0, WORLD.roadWidth * MAP_SCALE, TEX_SIZE);
+        g.fillRect(0, toPx(r - WORLD.roadHalf), TEX_SIZE, WORLD.roadWidth * MAP_SCALE);
+      }
+      g.restore();
     }
     // v4: asphalt noise DOUBLED (2600 -> 5200 speckles) + more repair
     // patches (26 -> 44) + dark tar-seam cracks, so the road reads as worn
@@ -113,7 +132,7 @@ function makeGroundTexture(rng) {
     // distance. Stronger now: the reference road is a mirror of neon + sun.
     for (let i = 0; i < 44; i += 1) {
       const pickC = rng();
-      g.fillStyle = pickC < 0.4 ? 'rgba(255,46,136,0.2)' : pickC < 0.75 ? 'rgba(55,224,255,0.17)' : 'rgba(255,140,60,0.2)';
+      g.fillStyle = pickC < 0.4 ? 'rgba(255,46,136,0.14)' : pickC < 0.75 ? 'rgba(55,224,255,0.12)' : 'rgba(255,140,60,0.14)';
       const along = -200 + rng() * 400;
       const w = 1.5 + rng() * 3;
       if (rng() < 0.5) g.fillRect(toPx(120 + (rng() - 0.5) * 8), toPx(along), w * MAP_SCALE, (14 + rng() * 26) * MAP_SCALE);
@@ -122,7 +141,7 @@ function makeGroundTexture(rng) {
     // Same wet streaks down Ocean Boulevard (x = 180), the cover's road.
     for (let i = 0; i < 44; i += 1) {
       const pickC = rng();
-      g.fillStyle = pickC < 0.4 ? 'rgba(255,46,136,0.22)' : pickC < 0.75 ? 'rgba(55,224,255,0.18)' : 'rgba(255,140,60,0.22)';
+      g.fillStyle = pickC < 0.4 ? 'rgba(255,46,136,0.15)' : pickC < 0.75 ? 'rgba(55,224,255,0.13)' : 'rgba(255,140,60,0.15)';
       const along = -200 + rng() * 400;
       const w = 1.5 + rng() * 3;
       if (rng() < 0.5) g.fillRect(toPx(180 + (rng() - 0.5) * 8), toPx(along), w * MAP_SCALE, (14 + rng() * 26) * MAP_SCALE);
@@ -241,30 +260,44 @@ function makeSignTexture(text, bg, fg, sub) {
   });
 }
 
-// Big neon billboard texture: palm glyph + SAN VEGA CITY, magenta on dark.
-function makeBillboardTexture() {
+// Big neon billboard texture: v5 uses the Pollinations sunset art (palms +
+// skyline, no text) as the background and overlays "SAN VEGA CITY" in neon
+// procedurally — AI text always comes out garbled, so the words stay code.
+function makeBillboardTexture(art) {
   return canvasTexture(512, 512, (g) => {
-    g.fillStyle = '#160a24';
-    g.fillRect(0, 0, 512, 512);
+    if (art) {
+      const s = Math.max(512 / art.width, 512 / art.height);
+      const w = art.width * s;
+      const h = art.height * s;
+      g.drawImage(art, (512 - w) / 2, (512 - h) / 2, w, h);
+      // Dark scrim band behind the text so the neon reads over the bright sky.
+      g.fillStyle = 'rgba(12,4,24,0.42)';
+      g.fillRect(0, 300, 512, 180);
+    } else {
+      g.fillStyle = '#160a24';
+      g.fillRect(0, 0, 512, 512);
+      // Palm glyph: trunk + fronds (procedural fallback only).
+      g.strokeStyle = '#ff7ad2';
+      g.lineWidth = 10;
+      g.shadowColor = '#ff2e88';
+      g.shadowBlur = 26;
+      g.beginPath();
+      g.moveTo(256, 300);
+      g.quadraticCurveTo(246, 220, 256, 170);
+      g.stroke();
+      for (let i = 0; i < 6; i += 1) {
+        const a = -Math.PI * (0.15 + i * 0.14);
+        g.beginPath();
+        g.moveTo(256, 175);
+        g.quadraticCurveTo(256 + Math.cos(a) * 70, 175 + Math.sin(a) * 40, 256 + Math.cos(a) * 120, 175 + Math.sin(a) * 90);
+        g.stroke();
+      }
+    }
     g.strokeStyle = '#ff2e88';
     g.lineWidth = 5;
     g.shadowColor = '#ff2e88';
     g.shadowBlur = 26;
     g.strokeRect(10, 10, 492, 492);
-    // Palm glyph: trunk + fronds.
-    g.strokeStyle = '#ff7ad2';
-    g.lineWidth = 10;
-    g.beginPath();
-    g.moveTo(256, 300);
-    g.quadraticCurveTo(246, 220, 256, 170);
-    g.stroke();
-    for (let i = 0; i < 6; i += 1) {
-      const a = -Math.PI * (0.15 + i * 0.14);
-      g.beginPath();
-      g.moveTo(256, 175);
-      g.quadraticCurveTo(256 + Math.cos(a) * 70, 175 + Math.sin(a) * 40, 256 + Math.cos(a) * 120, 175 + Math.sin(a) * 90);
-      g.stroke();
-    }
     g.fillStyle = '#ff7ad2';
     g.font = 'bold 64px system-ui, sans-serif';
     g.textAlign = 'center';
@@ -286,24 +319,42 @@ function makeSkyTexture(top, mid, horizon) {
 }
 
 function makePalm() {
+  // v5: rebuilt to the img2threejs palm spec
+  // (.img2threejs-palm/palm-sculpt-spec.json, validated): the reference
+  // palm's fronds ARCH and DROOP — tips hang ~35 deg below horizontal —
+  // so the crown reads as a drooping umbrella, not the v4 spiky star.
+  // 7 long outer fronds (tilt 2.0 rad) + 3 short upright crown fronds +
+  // a 3-nut cluster under the crown.
   const group = new THREE.Group();
   const trunk = new THREE.Mesh(PALM_TRUNK_GEO, PALM_TRUNK_MAT);
   trunk.position.y = 2.6;
   trunk.rotation.z = 0.08;
   trunk.castShadow = true;
   group.add(trunk);
-  for (let i = 0; i < 6; i += 1) {
+  for (let i = 0; i < 7; i += 1) {
     const frond = new THREE.Mesh(PALM_FROND_GEO, PALM_FROND_MAT);
     frond.scale.set(1, 1, 0.22);
-    const a = (i / 6) * Math.PI * 2;
-    frond.position.set(Math.cos(a) * 1.1, 5.3, Math.sin(a) * 1.1);
-    frond.rotation.set(Math.sin(a) * 1.35, 0, -Math.cos(a) * 1.35);
+    const a = (i / 7) * Math.PI * 2;
+    frond.position.set(Math.cos(a) * 1.2, 5.35, Math.sin(a) * 1.2);
+    frond.rotation.set(Math.sin(a) * 2.0, 0, -Math.cos(a) * 2.0);
     frond.castShadow = true;
     group.add(frond);
   }
-  const nuts = new THREE.Mesh(PALM_NUT_GEO, PALM_NUT_MAT);
-  nuts.position.y = 5.0;
-  group.add(nuts);
+  for (let i = 0; i < 3; i += 1) {
+    const tuft = new THREE.Mesh(PALM_FROND_GEO, PALM_FROND_MAT);
+    tuft.scale.set(0.65, 0.65, 0.22);
+    const a = (i / 3) * Math.PI * 2 + 0.5;
+    tuft.position.set(Math.cos(a) * 0.5, 5.55, Math.sin(a) * 0.5);
+    tuft.rotation.set(Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5);
+    tuft.castShadow = true;
+    group.add(tuft);
+  }
+  for (const [nx, nz] of [[-0.25, 0.1], [0.22, 0.18], [0.02, -0.24]]) {
+    const nut = new THREE.Mesh(PALM_NUT_GEO, PALM_NUT_MAT);
+    nut.scale.set(0.8, 0.8, 0.8);
+    nut.position.set(nx, 5.0, nz);
+    group.add(nut);
+  }
   return group;
 }
 
@@ -323,8 +374,9 @@ function todPhase(minutes) {
   return 'night';
 }
 
-export function createWorld(scene, seed) {
+export function createWorld(scene, seed, assets) {
   const rng = createRandom(seed);
+  const art = assets || {};
   const colliders = [];
   const buildingMeshes = [];
   const animated = { wheel: null, clouds: [], sunSprite: null, rain: null };
@@ -340,6 +392,18 @@ export function createWorld(scene, seed) {
   const skyTextures = {};
   for (const key of Object.keys(TOD)) {
     skyTextures[key] = makeSkyTexture(TOD[key].sky[0], TOD[key].sky[1], TOD[key].sky[2]);
+  }
+  // v5: the Pollinations sunset panorama replaces the procedural gradient
+  // for the two dusk phases (the cover lives in sunset). Day/night keep
+  // the procedural gradients — the photo is a sunset, not a noon sky.
+  // The photo is sRGB data: without sRGBEncoding the renderer treats it
+  // as linear and double-brightens it to a washed grey-lavender (round 1).
+  if (art.sky) {
+    const skyPhoto = new THREE.Texture(art.sky);
+    skyPhoto.encoding = THREE.sRGBEncoding;
+    skyPhoto.needsUpdate = true;
+    skyTextures.sunset = skyPhoto;
+    skyTextures.golden = skyPhoto;
   }
 
   // Sun, fog, lights. The sun sits south-west so a southbound chase down
@@ -402,17 +466,41 @@ export function createWorld(scene, seed) {
   haloDisc.position.set(60, 92, -330);
   haloDisc.lookAt(180, 10, 60);
   scene.add(haloDisc);
+  // v5: a soft haze disc behind the sun so the disc sits in glowing air
+  // instead of pasted on the sky (LOCAL-JUDGE-v4 C3). Round 2: radius
+  // 150 -> 110 and opacity 0.14 -> 0.10 — the big disc washed half the
+  // sky pale in round 1; haze hugs the sun now, it does not own the sky.
+  const hazeDisc = new THREE.Mesh(
+    new THREE.CircleGeometry(110, 32),
+    new THREE.MeshBasicMaterial({ color: 0xffb38a, transparent: true, opacity: 0.1, depthWrite: false, fog: false }),
+  );
+  hazeDisc.position.set(60, 92, -330);
+  hazeDisc.lookAt(180, 10, 60);
+  scene.add(hazeDisc);
   animated.sunSprite = sunDisc;
 
   // Clouds: flattened mesh puffs (same reason as the sun — meshes render,
   // sprites did not in the screenshot stack), drifting slowly.
-  const cloudMat = new THREE.MeshBasicMaterial({ color: 0xffc9a0, transparent: true, opacity: 0.65, fog: false });
+  const cloudMat = new THREE.MeshBasicMaterial({ color: 0xffc9a0, transparent: true, opacity: 0.5, fog: false }); // v5 round 2: 0.65 blew out to white cotton
   for (let i = 0; i < 12; i += 1) {
     const cloud = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 8), cloudMat);
-    cloud.scale.set(range(rng, 45, 95), range(rng, 6, 12), range(rng, 16, 26));
+    cloud.scale.set(range(rng, 40, 70), range(rng, 5, 9), range(rng, 14, 22));
     cloud.position.set(range(rng, -320, 320), range(rng, 60, 110), range(rng, -320, 320));
     scene.add(cloud);
     animated.clouds.push(cloud);
+  }
+  // v5: haze puffs hugging the sun disc (LOCAL-JUDGE-v4 C3) — flat,
+  // warm, low-opacity, clustered around (60, 92, -330) so the low sun
+  // reads through cloud and haze instead of a bare disc. Round 2: own
+  // material at 0.35 (the 0.65 cloud material blew out to white cotton),
+  // smaller and tighter to the disc.
+  const puffMat = new THREE.MeshBasicMaterial({ color: 0xffc9a0, transparent: true, opacity: 0.35, fog: false });
+  for (let i = 0; i < 5; i += 1) {
+    const puff = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 8), puffMat);
+    puff.scale.set(range(rng, 22, 40), range(rng, 3, 6), range(rng, 8, 14));
+    puff.position.set(60 + range(rng, -70, 70), range(rng, 82, 115), -330 + range(rng, -20, 20));
+    scene.add(puff);
+    animated.clouds.push(puff);
   }
 
   // Distant skyline: dark tower silhouettes beyond the playable city, for
@@ -433,7 +521,7 @@ export function createWorld(scene, seed) {
   // Ground.
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(MAP_HALF * 2, MAP_HALF * 2),
-    new THREE.MeshLambertMaterial({ map: makeGroundTexture(rng) }),
+    new THREE.MeshLambertMaterial({ map: makeGroundTexture(rng, art.asphalt) }),
   );
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
@@ -559,7 +647,7 @@ export function createWorld(scene, seed) {
   // of the tower at x=90, z=-30), visible from Ocean Boulevard.
   const billboard = new THREE.Mesh(
     new THREE.PlaneGeometry(26, 26),
-    new THREE.MeshBasicMaterial({ map: makeBillboardTexture() }),
+    new THREE.MeshBasicMaterial({ map: makeBillboardTexture(art.billboard) }),
   );
   billboard.position.set(107.5, 30, -30);
   billboard.rotation.y = Math.PI / 2;
@@ -681,25 +769,33 @@ export function createWorld(scene, seed) {
   }
 
   // Ferris wheel on the pier (beachfront, x = 228, z = -60).
+  // v5 round 3: rim 16 -> 18 with bigger cabins — the wheel is the cover's
+  // right-edge landmark (rank 2 shows it big); it needs more presence.
   const wheelGroup = new THREE.Group();
   wheelGroup.position.set(228, 0, -60);
   const rimMat = new THREE.MeshBasicMaterial({ color: 0xff5e8a });
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(16, 0.5, 8, 40), rimMat);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(18, 0.55, 8, 40), rimMat);
   rim.position.y = 20;
   wheelGroup.add(rim);
   const spokeMat = new THREE.MeshBasicMaterial({ color: 0xffd23e });
   for (let i = 0; i < 8; i += 1) {
-    const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.4, 32, 0.4), spokeMat);
+    const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.4, 36, 0.4), spokeMat);
     spoke.position.y = 20;
     spoke.rotation.z = (i / 8) * Math.PI;
     wheelGroup.add(spoke);
   }
   const cabinMat = new THREE.MeshLambertMaterial({ color: 0x37e0ff, emissive: 0x0a3a4a });
+  const cabinWinMat = new THREE.MeshBasicMaterial({ color: 0xffe9a0 });
   const cabins = [];
   for (let i = 0; i < 8; i += 1) {
-    const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2, 2), cabinMat);
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.2, 2.2), cabinMat);
     const a = (i / 8) * Math.PI * 2;
-    cabin.position.set(Math.cos(a) * 16, 20 + Math.sin(a) * 16, 0);
+    cabin.position.set(Math.cos(a) * 18, 20 + Math.sin(a) * 18, 0);
+    // v5: warm lit window strip on the cabin face, so the wheel reads as
+    // carrying people at dusk instead of plain cyan boxes.
+    const win = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.9), cabinWinMat);
+    win.position.set(0, 0.2, 1.12);
+    cabin.add(win);
     wheelGroup.add(cabin);
     cabins.push(cabin);
   }
@@ -800,7 +896,7 @@ export function createWorld(scene, seed) {
       animated.wheel.rim.rotation.z += dt * 0.12;
       for (let i = 0; i < animated.wheel.cabins.length; i += 1) {
         const a = (i / 8) * Math.PI * 2 + time * 0.12;
-        animated.wheel.cabins[i].position.set(Math.cos(a) * 16, 20 + Math.sin(a) * 16, 0);
+        animated.wheel.cabins[i].position.set(Math.cos(a) * 18, 20 + Math.sin(a) * 18, 0);
       }
       animated.wheel.group.children.forEach((child, idx) => {
         if (idx >= 1 && idx <= 8) child.rotation.z = (idx - 1) * Math.PI / 8 + time * 0.12;

@@ -18,12 +18,12 @@ export const WORLD = {
 };
 
 export function districtAt(x, z) {
-  if (x >= 180) return 'PALMERA BEACH';
-  if (z >= 120 && z <= 180) return 'NEON MILE';
-  if (x >= -120 && x <= 120 && z >= -120 && z <= 120) return 'CROWN DISTRICT';
-  if (x < -120 && z < -120) return 'OLD HARBOUR';
-  if (x < -120) return 'WEST DOCKS';
-  return 'SAN VEGA CITY';
+  if (x >= 180) return 'Palmera Beach';
+  if (z >= 120 && z <= 180) return 'Neon Mile';
+  if (x >= -120 && x <= 120 && z >= -120 && z <= 120) return 'Crown District';
+  if (x < -120 && z < -120) return 'Old Harbour';
+  if (x < -120) return 'West Docks';
+  return 'San Vega City';
 }
 
 export const PLAYER = {
@@ -55,8 +55,8 @@ export const GAME = {
   saveKey: 'neon-district-save-v1',
   startMoney: 250,
   missionReward: 500,
-  radioStation: 'NEON FM 101.3',
-  radioTrack: 'Sunset Static — Coral Ghosts',
+  radioStation: 'Neon FM 101.3',
+  radioTrack: 'Sunset Static, Coral Ghosts',
   playerName: 'Dario Cole',
   fixerName: 'Nadia Cruz',
   pdName: 'SVPD',
