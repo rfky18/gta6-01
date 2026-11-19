@@ -34,7 +34,7 @@ if (existsSync(join(here, 'screenshots'))) cpSync(join(here, 'screenshots'), joi
 // (1.960 / 2.400 XP), mission timer 2:40 + PAR BONUS +$650, combat staged
 // at REP 4, warm orange sun, textured road, varied building windows,
 // sculpt pass 2 on the Solaris GT (steeper wedge, brighter headlights).
-const ENTRY_VERSION = 'v8 — rank-3 execution: three-quarter chase camera (yaw 0.58 + aim pan keeps ferris wheel in frame), golden-hour haze around the sun (deep-gold disc, wider halo, layered haze discs + puffs, warm fog), dust trail streaming back along the road (half-advection, denser + wider + bigger puffs), visible HAWK-1 spotlight beam (wide core + outer cone, road pool, searchlight bulb) landing on VIPER-7';
+const ENTRY_VERSION = 'v9 — C1 mixed police response: live RAMMING / PURSUIT / ROADBLOCK / SEARCHING states per unit (coloured HUD pills + In sight / Search zone chip + search-zone circle on the minimap), VIPER-9 roadblock car that parks across the road with barricades and physically blocks the player (latched anchor, collision + condition cost), living beach (colourful umbrellas + lounge chairs + beach/boardwalk walkers + driven orange convertible traffic), roadblock mission objective + banner';
 writeFileSync(
   join(out, 'dossier.json'),
   buildDossier(out, {

@@ -110,7 +110,7 @@ const missions = createMissions(render.scene, world, {
 let jumpQueued = false;
 let prevRadio = false;
 let prevFiring = false;
-let policeInfo = { mode: 'PATROL', distance: 999, busted: false, units: [] };
+let policeInfo = { mode: 'PATROL', distance: 999, busted: false, units: [], roadblockHit: false, seen: false, searchZone: null };
 
 function clockText() {
   const mins = Math.floor(state.clockMinutes);
@@ -302,6 +302,9 @@ function step(dt, silent) {
   pedestrians.update(dt, state.driving ? car.state : player.state);
   const target = state.driving ? car.state : player.state;
   policeInfo = police.update(dt, target, state.wanted, state.time);
+  // v9: ramming the roadblock costs condition, on top of the speed the
+  // block itself already strips — going around stays the fast way through.
+  if (policeInfo.roadblockHit && state.driving) car.damage(1);
   if (state.screen !== 'play' && !silent) return;
   if (state.screen === 'play' || silent) {
     const look = silent ? { dx: 0, dy: 0 } : input.takeLook();
@@ -417,6 +420,9 @@ function pushHud(dt) {
     policeDistance: Math.hypot(police.state.x - pos.x, police.state.z - pos.z),
     policeMode: policeInfo.mode,
     policeUnits: policeInfo.units || [],
+    policeSeen: policeInfo.seen || false,
+    // v9: live search zone (centre + radius) for the minimap circle.
+    searchZone: policeInfo.searchZone || null,
     policeX: police.state.x,
     policeZ: police.state.z,
     traffic: traffic.cars,

@@ -28,7 +28,14 @@ export function createTraffic(scene, seed, count) {
   }
 
   for (let i = 0; i < count; i += 1) {
-    const mesh = buildCarMesh({ body: pick(rng, COLORS) });
+    // v9: cars[0] is the orange convertible — open top, visible driver —
+    // so the cover's traffic includes rank 2's driven-convertible beat.
+    // placeAhead() parks cars[0] first, so it lands in the cover frame.
+    // v9 R2: burnt orange, not pale orange — the R1 paint bleached to
+    // beige under the low sun.
+    const mesh = i === 0
+      ? buildCarMesh({ body: 0xe85d04, convertible: true })
+      : buildCarMesh({ body: pick(rng, COLORS) });
     scene.add(mesh);
     const loop = randomLoop();
     const start = loop[Math.floor(rng() * 4)];

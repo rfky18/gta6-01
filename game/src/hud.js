@@ -45,6 +45,7 @@ export function createHud() {
   const policeList = el('police-list');
   const policePanel = el('police-panel');
   const policeCount = el('police-count');
+  const policeSight = el('police-sight');
   const dialogBox = el('dialog-box');
   const dialogPortrait = el('dialog-portrait-img');
   const dialogName = el('dialog-name');
@@ -110,16 +111,27 @@ export function createHud() {
       }
       weaponSlotsEl.innerHTML = html;
     }
-    // Police response: every live unit + the helicopter.
+    // Police response: every live unit + the helicopter. v9: each state
+    // reads at a glance — a coloured pill per mode (RAMMING red, ROADBLOCK
+    // amber, PURSUIT pale yellow, SEARCHING blue, SPOTLIGHT cyan), like
+    // rank 1's mixed-state list, never five identical rows. The sight
+    // chip says whether any unit can see the player ("In sight") or the
+    // trail has gone cold and the search zone is live ("Search zone").
     if (info.wanted > 0) {
       policePanel.style.display = 'block';
       const units = info.policeUnits && info.policeUnits.length ? info.policeUnits : [{ callsign: 'VIPER-4', distance: info.policeDistance, mode: info.policeMode }];
       if (policeCount) policeCount.textContent = `${units.length + 1} units, code ${info.wanted}`;
+      const anySearching = units.some((u) => u.mode === 'SEARCHING');
+      if (policeSight) {
+        policeSight.textContent = anySearching ? 'Search zone' : 'In sight';
+        policeSight.className = anySearching ? 'sight-search' : 'sight-seen';
+      }
       let html = '';
       for (const u of units) {
-        html += `<div class="police-row"><span class="callsign">${u.callsign}</span><span>${Math.round(u.distance)} m</span><span class="state">${titleCase(u.mode)}</span></div>`;
+        const mode = String(u.mode || 'PURSUIT').toUpperCase();
+        html += `<div class="police-row"><span class="callsign">${u.callsign}</span><span>${Math.round(u.distance)} m</span><span class="state state-${mode.toLowerCase()}">${mode}</span></div>`;
       }
-      html += '<div class="police-row dim"><span class="callsign">HAWK-1, air</span><span>—</span><span class="state">Spotlight</span></div>';
+      html += '<div class="police-row dim"><span class="callsign">HAWK-1, air</span><span>—</span><span class="state state-spotlight">SPOTLIGHT</span></div>';
       policeList.innerHTML = html;
     } else {
       policePanel.style.display = 'none';
@@ -197,6 +209,20 @@ export function createHud() {
       mctx.rotate(Math.PI / 4);
       mctx.fillRect(-5, -5, 10, 10);
       mctx.restore();
+    }
+    // v9: the search zone — a red dashed circle on the minimap around the
+    // last-seen spot, live while any unit is SEARCHING (rank 1's "search
+    // zone follows you"). Drawn under the dots so the units stay readable.
+    if (info.searchZone && info.searchZone.active) {
+      mctx.strokeStyle = 'rgba(255,62,62,0.9)';
+      mctx.fillStyle = 'rgba(255,62,62,0.10)';
+      mctx.lineWidth = 2;
+      mctx.setLineDash([5, 4]);
+      mctx.beginPath();
+      mctx.arc(cx + info.searchZone.x * scale, cy + info.searchZone.z * scale, info.searchZone.radius * scale, 0, Math.PI * 2);
+      mctx.fill();
+      mctx.stroke();
+      mctx.setLineDash([]);
     }
     // Police (red/blue), enemies (orange), traffic (grey), player (white arrow).
     dot(info.policeX, info.policeZ, '#ff3e3e', 4);

@@ -59,7 +59,7 @@ export const MISSIONS = [
     id: 'sunset-getaway', title: 'SUNSET GETAWAY', chapter: 'CH 4', giver: 'Rico Vane', reward: 1200, par: { seconds: 160, bonus: 650 },
     stages: [
       { type: 'goto', spot: 'plaza', objective: 'Rico’s getaway route: Crown Plaza first.', next: 'Reach Crown Plaza', line: { speaker: 'Rico Vane', text: 'One down, two to go. The sun’s setting — beautiful night for a getaway.' } },
-      { type: 'goto', spot: 'beachfront', objective: 'Second stop — Palmera Beach.', next: 'Reach the beach', line: { speaker: 'Rico Vane', text: 'Beach stop done. Last one’s the pier — don’t stop for anyone.' } },
+      { type: 'goto', spot: 'beachfront', objective: 'Second stop — Palmera Beach. SVPD roadblock ahead — punch through it.', next: 'Reach the beach', line: { speaker: 'Rico Vane', text: 'Beach stop done. Last one’s the pier — don’t stop for anyone.' } },
       { type: 'deliver', spot: 'pier', objective: 'Final stop — Palmera Pier. Don’t stop for anyone.', next: '—', line: { speaker: 'Rico Vane', text: 'Three stops, no cops, one sunset. $1,200. Rico Vane drives with legends.' } },
     ],
   },

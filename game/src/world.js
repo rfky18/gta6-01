@@ -916,14 +916,61 @@ export function createWorld(scene, seed, assets) {
     bin.position.set(x + 4, 0.5, 127);
     scene.add(bin);
   }
-  const umbrellaMat = new THREE.MeshLambertMaterial({ color: 0xff5e8a, side: THREE.DoubleSide });
-  for (let z = -180; z <= 180; z += 45) {
+  // v9: the beach was one pink umbrella every 45 m — the cover's beach
+  // read empty next to rank 2's. Now: colourful umbrellas in a dense
+  // cluster on the sand in the cover's sightline (z -96..24), plus lounge
+  // chairs under every other one, so the beach reads busy at a glance.
+  const umbrellaColors = [0xff5e8a, 0xffd23e, 0x37e0ff, 0x37ff8a, 0xff8a3e, 0x9b7fb8];
+  const umbrellaSpots = [];
+  for (let z = -180; z <= 180; z += 45) umbrellaSpots.push([222, z]);
+  for (let z = -96; z <= 24; z += 12) umbrellaSpots.push([216 + rng() * 10, z]);
+  let umbrellaIdx = 0;
+  for (const [ux, uz] of umbrellaSpots) {
+    const umbrellaMat = new THREE.MeshLambertMaterial({ color: pick(rng, umbrellaColors), side: THREE.DoubleSide });
     const umb = new THREE.Mesh(new THREE.ConeGeometry(2.2, 1.2, 8), umbrellaMat);
-    umb.position.set(222, 2.4, z);
+    umb.position.set(ux, 2.4, uz);
     scene.add(umb);
     const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.4, 6), poleMat);
-    stick.position.set(222, 1.2, z);
+    stick.position.set(ux, 1.2, uz);
     scene.add(stick);
+    // Lounge chair under every other cluster umbrella, facing the ocean.
+    if (umbrellaIdx >= 9 && umbrellaIdx % 2 === 0) {
+      const chairMat = new THREE.MeshLambertMaterial({ color: pick(rng, [0xf2f2f2, 0x37e0ff, 0xff8a3e]) });
+      const seat = new THREE.Mesh(boxGeo, chairMat);
+      seat.scale.set(0.7, 0.12, 1.7);
+      seat.position.set(ux - 2.6, 0.35, uz + 1.2);
+      scene.add(seat);
+      const back = new THREE.Mesh(boxGeo, chairMat);
+      back.scale.set(0.7, 0.12, 0.9);
+      back.position.set(ux - 2.6, 0.6, uz + 2.3);
+      back.rotation.x = -0.6;
+      scene.add(back);
+    }
+    umbrellaIdx += 1;
+  }
+  // v9 R2: boardwalk parasols — three big umbrellas ON the boardwalk edge
+  // (x 207), close to the road, so the beach reads in the mid-frame right
+  // instead of only far on the sand. Chairs under two of them.
+  for (const [px, pz, pcolor] of [[207, -32, 0xff5e8a], [207, -52, 0xffd23e], [207, -72, 0x37e0ff]]) {
+    const parasolMat = new THREE.MeshLambertMaterial({ color: pcolor, side: THREE.DoubleSide });
+    const parasol = new THREE.Mesh(new THREE.ConeGeometry(2.6, 1.4, 8), parasolMat);
+    parasol.position.set(px, 2.6, pz);
+    scene.add(parasol);
+    const pstick = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 2.6, 6), poleMat);
+    pstick.position.set(px, 1.3, pz);
+    scene.add(pstick);
+  }
+  for (const [cx, cz] of [[204.5, -30.5], [204.5, -50.5]]) {
+    const chairMat2 = new THREE.MeshLambertMaterial({ color: 0xf2f2f2 });
+    const seat2 = new THREE.Mesh(boxGeo, chairMat2);
+    seat2.scale.set(0.7, 0.12, 1.7);
+    seat2.position.set(cx, 0.35, cz);
+    scene.add(seat2);
+    const back2 = new THREE.Mesh(boxGeo, chairMat2);
+    back2.scale.set(0.7, 0.12, 0.9);
+    back2.position.set(cx, 0.6, cz + 1.1);
+    back2.rotation.x = -0.6;
+    scene.add(back2);
   }
 
   // Parked cars along Ocean Boulevard + Neon Mile (static, same factory).

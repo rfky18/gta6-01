@@ -182,7 +182,41 @@ export function buildCarMesh(opts) {
   const rearGlass = new THREE.Mesh(GEO.rearGlass, rearGlassMat);
   rearGlass.position.set(0, 1.02, -1.3);
   rearGlass.rotation.x = 0.5;
-  group.add(body, nose, splitter, hood, tail, cabin, roof, windshield, rearGlass);
+  group.add(body, nose, splitter, hood, tail);
+  if (o.convertible) {
+    // v9: convertible — no roof, no glasshouse. An open tub with two
+    // seats and a visible driver, so the car reads as driven (rank 2's
+    // orange convertible traffic). The low wind deflector keeps the
+    // windshield line without closing the cabin.
+    const tub = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.22, 2.1), darkMat);
+    tub.position.set(0, 0.78, -0.3);
+    group.add(tub);
+    const seatMat = new THREE.MeshLambertMaterial({ color: 0x6b4a22 });
+    for (const s of [-0.42, 0.42]) {
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.5, 0.5), seatMat);
+      seat.position.set(s, 0.95, -0.55);
+      seat.rotation.x = -0.25;
+      group.add(seat);
+    }
+    const deflector = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.28, 0.05), glassMat);
+    deflector.position.set(0, 0.98, 0.75);
+    deflector.rotation.x = -0.35;
+    group.add(deflector);
+    // Driver, left seat: shirt, head, hair — visible over the door line
+    // from the chase camera, so the car is clearly occupied.
+    const driverShirt = new THREE.MeshLambertMaterial({ color: 0x37b6ff });
+    const driverSkin = new THREE.MeshLambertMaterial({ color: 0xc98d64 });
+    const driverHair = new THREE.MeshLambertMaterial({ color: 0x2a2018 });
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.55, 0.32), driverShirt);
+    torso.position.set(-0.42, 1.12, -0.35);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.34, 0.34), driverSkin);
+    head.position.set(-0.42, 1.55, -0.35);
+    const hair = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.14, 0.36), driverHair);
+    hair.position.set(-0.42, 1.76, -0.35);
+    group.add(torso, head, hair);
+  } else {
+    group.add(cabin, roof, windshield, rearGlass);
+  }
   // Flared rear haunches over the wide rear wheels + side skirts.
   for (const s of [-1, 1]) {
     const haunch = new THREE.Mesh(GEO.haunch, bodyMat);

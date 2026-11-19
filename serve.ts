@@ -14,9 +14,9 @@ const requested = portIndex === -1 ? 8080 : Number(args[portIndex + 1]);
 const port = Number.isInteger(requested) && requested > 0 && requested < 65536 ? requested : 8080;
 // v3: the server reports its entry version on startup so a screenshot run
 // can be matched to the build that served it.
-// v8: version bumped for the v8 cover build (three-quarter camera,
-// golden haze, dust trail, visible heli beam).
-const SERVER_VERSION = 'v8';
+// v9: version bumped for the v9 cover build (mixed police states +
+// roadblock + search zone, living beach, convertible traffic).
+const SERVER_VERSION = 'v9';
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',

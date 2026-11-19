@@ -95,6 +95,23 @@ export function createPedestrians(scene, seed, count) {
     });
   }
 
+  // v9 staging hook for the beach: put walkers on the sand/boardwalk edge
+  // (a fixed x line, strolling along z) so the cover's beach has people
+  // in it, not just umbrellas. `start` skips the walkers placeSidewalk
+  // already claimed, so the two hooks never fight over the same walker.
+  function placeBeach(x, z, spots, start) {
+    const first = start === undefined ? 0 : start;
+    spots.forEach((spot, i) => {
+      const w = walkers[first + i];
+      if (!w) return;
+      w.horizontal = false;
+      w.lane = x + (spot.dx || 0);
+      w.pos = z + spot.ahead;
+      w.dir = spot.dir === undefined ? (i % 2 === 0 ? -1 : 1) : spot.dir;
+      w.mesh.group.position.set(w.lane, 0, w.pos);
+    });
+  }
+
   function update(dt, threat) {
     for (const w of walkers) {
       const speed = w.panic > 0 ? w.baseSpeed * 2.6 : w.baseSpeed;
@@ -127,5 +144,5 @@ export function createPedestrians(scene, seed, count) {
     }
   }
 
-  return { walkers, update, panicAt, placeSidewalk };
+  return { walkers, update, panicAt, placeSidewalk, placeBeach };
 }

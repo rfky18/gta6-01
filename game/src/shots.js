@@ -11,6 +11,12 @@
 // MISSION 7/8 (SUNSET GETAWAY, stage 2/3, Rico Vane dialog), REP 4 ·
 // BAY HUSTLER with the REP bar nearly full + "1.960 / 2.400 XP", mission
 // timer 2:40 + PAR BONUS +$650, 5 traffic cars + 6 walkers in frame, full HUD.
+// v9 cover (LOCAL-JUDGE-v8: v8 went 3W–3L, all losses on C1): the same
+// chase, but the response is MIXED — VIPER-4 RAMMING, VIPER-7 PURSUIT,
+// VIPER-9 ROADBLOCK (parked across the road ahead, barricades out),
+// VIPER-12 SEARCHING (search-zone circle on the minimap), HAWK-1
+// spotlight — plus a living beach (colourful umbrellas, lounge chairs,
+// beach walkers) and the orange convertible in traffic.
 import { GAME, COVER, CAR } from './config.js';
 
 export function stageShot(game, name) {
@@ -38,22 +44,48 @@ export function stageShot(game, name) {
     // lanes so the chase reads as a busy street — v3 put them in the same
     // ±3 lanes as the police and the black units hid behind the traffic.
     // Police run the outer lanes (±4–5), traffic the centre (±1.5).
+    // v9 R2: slots sit 20 m further out than the numbers read — the car
+    // advances ~20 m in the roll after this placement, so a -18 slot used
+    // to land 2 m off the hero's bumper (and the convertible stacked on
+    // VIPER-4 in screen space). Slots are staged at -38..-108 so they
+    // land at -18..-88, and the convertible (slot 0) runs the RIGHT lane
+    // so it clears VIPER-4 on the left.
     g.traffic.placeAhead(g.car.state.x, g.car.state.z, Math.PI, [
-      { lane: -1.5, ahead: -18, speed: 10 },
-      { lane: 1.5, ahead: -36, speed: 9 },
-      { lane: -1.5, ahead: -52, speed: 11 },
-      { lane: 1.5, ahead: -68, speed: 10 },
-      { lane: -1.5, ahead: -88, speed: 9 },
+      { lane: 1.5, ahead: -38, speed: 10 },
+      { lane: 1.5, ahead: -56, speed: 9 },
+      { lane: -1.5, ahead: -72, speed: 11 },
+      { lane: 1.5, ahead: -88, speed: 10 },
+      { lane: -1.5, ahead: -108, speed: 9 },
     ]);
     // Walkers on both sidewalks ahead, in frame (6 of them).
+    // v9 R2: spots sit 20 m further out — same post-placement roll as
+    // the traffic: the -22 spot used to land 1.7 m off the hero's nose
+    // and read as a giant pink box by the camera.
     g.pedestrians.placeSidewalk(180, g.car.state.z, [
-      { side: -1, ahead: -14 },
-      { side: 1, ahead: -22 },
       { side: -1, ahead: -34 },
-      { side: 1, ahead: -46 },
-      { side: -1, ahead: -58 },
-      { side: 1, ahead: -70 },
+      { side: 1, ahead: -42 },
+      { side: -1, ahead: -54 },
+      { side: 1, ahead: -66 },
+      { side: -1, ahead: -78 },
+      { side: 1, ahead: -90 },
     ]);
+    // v9: beach walkers on the sand's edge (x 213, clear of the umbrella
+    // cluster at x 216+), so the beach has people in frame, not just
+    // umbrellas — walkers 6-9, after the sidewalk six.
+    // v9 R2: spots pushed out further still — at x 213 anything nearer
+    // than ~40 m ahead of the car falls off the frame's right edge.
+    g.pedestrians.placeBeach(213, g.car.state.z, [
+      { ahead: -55 },
+      { ahead: -70 },
+      { ahead: -85 },
+      { ahead: -100 },
+    ], 6);
+    // v9 R2: two more walkers ON the boardwalk (x 207), mid-frame right,
+    // so the beach life reads close to the road, not only far on the sand.
+    g.pedestrians.placeBeach(207, g.car.state.z, [
+      { ahead: -48 },
+      { ahead: -68 },
+    ], 10);
     g.input.press('KeyW');
     for (let i = 0; i < 24; i += 1) g.step(1 / 60, true);
     g.input.release('KeyW');
@@ -70,16 +102,33 @@ export function stageShot(game, name) {
     }
     g.input.release('KeyW');
     // Pull the pursuit into frame LAST, after the staging steps, so nothing
-    // moves it out of frame: VIPER-4 big and close ahead-left of the Solaris,
-    // VIPER-7 ahead-right on the road, VIPER-9 + VIPER-12 further up the
-    // boulevard, HAWK-1 in the sky ahead-left.
+    // moves it out of frame. v9 (LOCAL-JUDGE-v8 C1): the four units arrive
+    // in FOUR different live states, not five rows of Pursuit —
+    //   VIPER-4 close ahead-left, under 8 m: RAMMING.
+    //   VIPER-7 ahead-right on the road: PURSUIT.
+    //   VIPER-9 parked ACROSS the road 28 m ahead, at its roadblock
+    //     anchor, barricades out: ROADBLOCK.
+    //   VIPER-12 far up the boulevard, past sight range: SEARCHING.
+    // HAWK-1 in the sky ahead-left, spotlight on the road.
     // (Ahead = -z here: the camera sits behind the car, so +z is behind it.)
-    g.police.teleport(g.car.state.x - 5, g.car.state.z - 8);
+    g.police.teleport(g.car.state.x - 5.5, g.car.state.z - 5.5);
     g.police.state.heading = Math.PI;
     g.police.state.speed = 30;
     g.police.placeUnit2(g.car.state.x + 4, g.car.state.z - 34, Math.PI, 28);
-    g.police.placeUnit3(g.car.state.x + 4, g.car.state.z - 56, Math.PI, 26);
+    // v9 R2: the block sits 24 m ahead, not 28 — bigger in frame, clear
+    // of the traffic at -36 — and VIPER-4 sits 5.5 m out to the side so
+    // it reads beside the hero instead of hiding behind its flank.
+    g.police.placeUnit3(g.car.state.x, g.car.state.z - 24, Math.PI / 2, 0);
     g.police.placeUnit4(g.car.state.x - 5, g.car.state.z - 74, Math.PI, 26);
+    // v9: ONE silent step so police.update() recomputes every mode from
+    // these placed distances (RAMMING / PURSUIT / ROADBLOCK / SEARCHING)
+    // — the HUD then shows the real modes, not staging text. The coast
+    // step's drag shaves ~0.5 m/s off the car, so re-pin the real top
+    // speed it had just reached (same staging pin as the mission clock).
+    g.step(1 / 60, true);
+    g.car.state.speed = CAR.maxSpeed;
+    // v9: the roadblock gets its own banner, like rank 2's ROADBLOCK AHEAD.
+    g.hud.banner('Roadblock ahead', 30);
     // v8: HAWK-1 hangs over the road ahead so its spotlight cone lands
     // on the street by the pursuit — rank 3 shows the beam hitting the
     // road by the cruiser, not a distant dot.

@@ -5,6 +5,18 @@
 // (4 ground units + HAWK-1) in the HUD. If a unit pins the player down at
 // low speed, the player gets busted. HAWK-1 shadows from the air.
 //
+// v9: the four ground units no longer collapse to one state — each mode is
+// computed live from real distances and the roadblock anchor:
+//   RAMMING  — unit within 8 m, closing to hit the player.
+//   PURSUIT  — unit inside sight range, chasing.
+//   SEARCHING — unit beyond sight range (55 m) lost the trail: it sweeps
+//     the last-seen area instead of pursuing blindly, and the minimap
+//     draws the search zone around that spot.
+//   ROADBLOCK — VIPER-9 at 3 stars drives to an anchor 30 m ahead of the
+//     player, parks ACROSS the road there (barricades out), and holds —
+//     a physical block: ramming it costs speed + condition, going around
+//     is the fast way through. The HUD pills show the real mode per unit.
+//
 // v2: the pursuit car is scaled up 1.25x so it reads BIG in the chase frame,
 // and a second unit joins at wanted 2 — the response list in the HUD shows
 // both units plus the helicopter.
@@ -82,6 +94,43 @@ export function createPolice(scene, world) {
   unit4.scale.set(POLICE_SCALE, POLICE_SCALE, POLICE_SCALE);
   unit4.visible = false;
   scene.add(unit4);
+  // v9: roadblock props — striped sawhorses + cones that ride with VIPER-9
+  // (children of its mesh, so they sit across the road exactly where the
+  // unit parks). Hidden unless the unit is actually in ROADBLOCK mode, so
+  // a pursuit never shows a fake block. Local +z is the car's forward:
+  // barriers at local z ±4.2 extend the block east/west across the road,
+  // and each barrier's length runs ACROSS the road (local z), so the car
+  // + two barriers close the whole 11 m width. Cones mark the edges.
+  // v9 R2: barriers bigger (2.4 -> 3.2 long) and turned across the road —
+  // the R1 bars ran along the road edge and read as thin sticks.
+  const roadblockProps = new THREE.Group();
+  {
+    const barrierMat = new THREE.MeshLambertMaterial({ color: 0xff6a1a });
+    const stripeMat = new THREE.MeshLambertMaterial({ color: 0xf2f2f2 });
+    const legMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
+    for (const side of [-1, 1]) {
+      const barrier = new THREE.Group();
+      const top = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.4, 3.2), barrierMat);
+      top.position.y = 1.0;
+      const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.34, 3.2), stripeMat);
+      stripe.position.y = 0.62;
+      const legL = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.12), legMat);
+      legL.position.set(0, 0.25, -1.3);
+      const legR = legL.clone();
+      legR.position.z = 1.3;
+      barrier.add(top, stripe, legL, legR);
+      barrier.position.set(0, 0, side * 4.2);
+      roadblockProps.add(barrier);
+    }
+    const coneMat = new THREE.MeshLambertMaterial({ color: 0xff6a1a });
+    for (const [cx, cz] of [[-1.3, -2.6], [1.3, -2.6], [-1.3, 2.6], [1.3, 2.6]]) {
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(0.45, 1.1, 8), coneMat);
+      cone.position.set(cx, 0.55, cz);
+      roadblockProps.add(cone);
+    }
+  }
+  roadblockProps.visible = false;
+  unit3.add(roadblockProps);
   // HAWK-1 air unit: simple helicopter that shadows the player while wanted.
   const { heli, rotor, spot, spotOuter } = makeHeli();
   scene.add(heli);
@@ -103,7 +152,7 @@ export function createPolice(scene, world) {
     z: 60,
     heading: 0,
     speed: 0,
-    mode: 'PATROL', // PATROL | PURSUIT | RAMMING
+    mode: 'PATROL', // PATROL | PURSUIT | RAMMING | ROADBLOCK | SEARCHING
     bustedTimer: 0,
     distance: 999,
     callsign: 'VIPER-4',
@@ -127,6 +176,10 @@ export function createPolice(scene, world) {
     distance4: 999,
     heliX: 0,
     heliZ: 0,
+    // v9: last-seen position — any unit inside sight range keeps it hot;
+    // units that lose the trail SEARCH around this spot.
+    lastSeen: { x: 0, z: 0 },
+    lastSeenSet: false,
   };
   // Patrol beat: a rectangle loop around downtown.
   const beat = [
@@ -157,13 +210,50 @@ export function createPolice(scene, world) {
     return dist;
   }
 
+  // v9: sight range — beyond this a unit loses the trail and SEARCHES.
+  // Roadblock anchor: how far ahead of the player VIPER-9 sets its block.
+  const SIGHT_RANGE = 55;
+  const ROADBLOCK_LEAD = 30;
+  const SEARCH_RADIUS = 45;
+
+  // Sweep point for a SEARCHING unit: slow orbit around the last-seen
+  // spot, a different phase per unit so they do not stack.
+  function searchTarget(i, time) {
+    const a = time * 0.25 + i * 2.1;
+    return { x: state.lastSeen.x + Math.cos(a) * 18, z: state.lastSeen.z + Math.sin(a) * 18 };
+  }
+
   function update(dt, target, wanted, time) {
     const tx = target.x;
     const tz = target.z;
+    const theading = target.heading || 0;
+    // Distances first — every mode below is read off these live numbers.
     state.distance = Math.hypot(tx - state.x, tz - state.z);
+    state.distance2 = Math.hypot(tx - state.x2, tz - state.z2);
+    state.distance3 = Math.hypot(tx - state.x3, tz - state.z3);
+    state.distance4 = Math.hypot(tx - state.x4, tz - state.z4);
+    // Last seen: any unit inside sight range keeps the trail hot.
+    const nearest = Math.min(state.distance, state.distance2, state.distance3, state.distance4);
+    if (wanted > 0 && nearest < SIGHT_RANGE) {
+      state.lastSeen.x = tx;
+      state.lastSeen.z = tz;
+      state.lastSeenSet = true;
+    }
+    if (!state.lastSeenSet) {
+      state.lastSeen.x = tx;
+      state.lastSeen.z = tz;
+    }
+    // v9: VIPER-4 — RAMMING when close, SEARCHING when the trail is cold,
+    // PURSUIT otherwise. SEARCHING units sweep the last-seen area at 14
+    // m/s instead of chasing a player they cannot see.
     if (wanted > 0) {
-      state.mode = state.distance < 8 ? 'RAMMING' : 'PURSUIT';
-      steerToward(state, tx, tz, dt, 36);
+      state.mode = state.distance < 8 ? 'RAMMING' : state.distance > SIGHT_RANGE ? 'SEARCHING' : 'PURSUIT';
+      if (state.mode === 'SEARCHING') {
+        const t = searchTarget(0, time);
+        steerToward(state, t.x, t.z, dt, 14);
+      } else {
+        steerToward(state, tx, tz, dt, 36);
+      }
     } else {
       state.mode = 'PATROL';
       const t = beat[wp];
@@ -175,8 +265,13 @@ export function createPolice(scene, world) {
     const u2 = { x: state.x2, z: state.z2, heading: state.heading2, speed: state.speed2 };
     if (wanted >= 2) {
       unit2.visible = true;
-      state.mode2 = state.distance2 < 8 ? 'RAMMING' : 'PURSUIT';
-      steerToward(u2, tx + 6, tz - 4, dt, 34);
+      state.mode2 = state.distance2 < 8 ? 'RAMMING' : state.distance2 > SIGHT_RANGE ? 'SEARCHING' : 'PURSUIT';
+      if (state.mode2 === 'SEARCHING') {
+        const t = searchTarget(1, time);
+        steerToward(u2, t.x, t.z, dt, 14);
+      } else {
+        steerToward(u2, tx + 6, tz - 4, dt, 34);
+      }
     } else {
       unit2.visible = false;
       state.mode2 = 'PATROL';
@@ -188,20 +283,67 @@ export function createPolice(scene, world) {
     state.z2 = u2.z;
     state.heading2 = u2.heading;
     state.speed2 = u2.speed;
-    state.distance2 = Math.hypot(tx - state.x2, tz - state.z2);
-    // v3: third + fourth units join at wanted 3, flanking wide so they do
-    // not stack on VIPER-4/7. They pursue and cut off (ROADBLOCK when
-    // close) but never ram or bust — only the first two units do that, so
-    // 3-star heat stays fair.
+    // v9: VIPER-9 is the roadblock car. At 3 stars it drives to an anchor
+    // 30 m ahead of the player and, once there, parks ACROSS the road and
+    // holds (ROADBLOCK) until the player blows past it or outruns it —
+    // then it gives chase to the next anchor. Beyond sight range it
+    // SEARCHES like the others instead of driving blind.
+    // VIPER-12 flanks like before, but also SEARCHES when it loses sight.
     const u3 = { x: state.x3, z: state.z3, heading: state.heading3, speed: state.speed3 };
     const u4 = { x: state.x4, z: state.z4, heading: state.heading4, speed: state.speed4 };
     if (wanted >= 3) {
       unit3.visible = true;
       unit4.visible = true;
-      state.mode3 = state.distance3 < 10 ? 'ROADBLOCK' : 'PURSUIT';
-      state.mode4 = state.distance4 < 8 ? 'RAMMING' : 'PURSUIT';
-      steerToward(u3, tx - 6, tz + 8, dt, 33);
-      steerToward(u4, tx + 8, tz + 10, dt, 32);
+      const fx = Math.sin(theading);
+      const fz = Math.cos(theading);
+      const ax = tx + fx * ROADBLOCK_LEAD;
+      const az = tz + fz * ROADBLOCK_LEAD;
+      const anchorDist = Math.hypot(ax - state.x3, az - state.z3);
+      // v9 R3 (live-probe catch): the anchor slides forward with the
+      // player, so a block judged against the LIVE anchor melts as the
+      // player approaches it — the unit chased the new anchor instead of
+      // holding the road. Once ROADBLOCK, the unit LATCHES: it holds its
+      // post until the player has actually blown past it (or the trail
+      // goes cold — the SEARCHING check above). Only then does it give
+      // chase to the next anchor.
+      const pastBlock = (tx - state.x3) * fx + (tz - state.z3) * fz > 4;
+      if (state.distance3 > SIGHT_RANGE) {
+        state.mode3 = 'SEARCHING';
+        const t = searchTarget(2, time);
+        steerToward(u3, t.x, t.z, dt, 14);
+      } else if (state.mode3 === 'ROADBLOCK' && !pastBlock) {
+        // Hold the latched post: bleed speed to a stop and swing the nose
+        // across the player's line of travel.
+        u3.speed = Math.max(0, u3.speed - 30 * dt);
+        const want = theading + Math.PI / 2;
+        let diff = want - u3.heading;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        u3.heading += Math.max(-2.2 * dt, Math.min(2.2 * dt, diff));
+        u3.x += Math.sin(u3.heading) * u3.speed * dt;
+        u3.z += Math.cos(u3.heading) * u3.speed * dt;
+      } else if (anchorDist < 12) {
+        state.mode3 = 'ROADBLOCK';
+        // First frame on the post: same hold — bleed speed, swing across.
+        u3.speed = Math.max(0, u3.speed - 30 * dt);
+        const want = theading + Math.PI / 2;
+        let diff = want - u3.heading;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        u3.heading += Math.max(-2.2 * dt, Math.min(2.2 * dt, diff));
+        u3.x += Math.sin(u3.heading) * u3.speed * dt;
+        u3.z += Math.cos(u3.heading) * u3.speed * dt;
+      } else {
+        state.mode3 = 'PURSUIT';
+        steerToward(u3, ax, az, dt, 33);
+      }
+      state.mode4 = state.distance4 < 8 ? 'RAMMING' : state.distance4 > SIGHT_RANGE ? 'SEARCHING' : 'PURSUIT';
+      if (state.mode4 === 'SEARCHING') {
+        const t = searchTarget(3, time);
+        steerToward(u4, t.x, t.z, dt, 14);
+      } else {
+        steerToward(u4, tx + 8, tz + 10, dt, 32);
+      }
     } else {
       unit3.visible = false;
       unit4.visible = false;
@@ -216,12 +358,12 @@ export function createPolice(scene, world) {
     state.z3 = u3.z;
     state.heading3 = u3.heading;
     state.speed3 = u3.speed;
-    state.distance3 = Math.hypot(tx - state.x3, tz - state.z3);
     state.x4 = u4.x;
     state.z4 = u4.z;
     state.heading4 = u4.heading;
     state.speed4 = u4.speed;
-    state.distance4 = Math.hypot(tx - state.x4, tz - state.z4);
+    // Barricades only ever show on a real ROADBLOCK hold.
+    roadblockProps.visible = wanted >= 3 && state.mode3 === 'ROADBLOCK';
     // Ram: shove the target when we touch it.
     let rammed = false;
     if (state.distance < 3.4 && wanted > 0) {
@@ -241,6 +383,22 @@ export function createPolice(scene, world) {
       const d = Math.hypot(dx, dz) || 1;
       target.x += (dx / d) * push * 10;
       target.z += (dz / d) * push * 10;
+    }
+    // v9: roadblock collision — the parked ROADBLOCK unit is a physical
+    // wall, not a prop. Driving into it shoves the player back out and
+    // halves their speed (main.js also bills condition on the hit); the
+    // pursuers ram, the block blocks.
+    let roadblockHit = false;
+    if (wanted >= 3 && state.mode3 === 'ROADBLOCK') {
+      const bd = Math.hypot(tx - state.x3, tz - state.z3);
+      if (bd < 3.6) {
+        roadblockHit = true;
+        const d = bd || 1;
+        const push = 3.6 - bd;
+        target.x += ((tx - state.x3) / d) * push;
+        target.z += ((tz - state.z3) / d) * push;
+        if (typeof target.speed === 'number') target.speed *= 0.5;
+      }
     }
     // Busted: pinned at low speed for 3 seconds.
     if (wanted > 0 && state.distance < 3.5 && Math.abs(target.speed || 0) < 2) {
@@ -293,13 +451,29 @@ export function createPolice(scene, world) {
     for (const wheel of unit3.userData.wheels) wheel.rotation.x += spin3;
     const spin4 = (state.speed4 * dt) / 0.4;
     for (const wheel of unit4.userData.wheels) wheel.rotation.x += spin4;
+    // Distances after this step's movement, for the HUD + search zone.
+    state.distance = Math.hypot(tx - state.x, tz - state.z);
+    state.distance2 = Math.hypot(tx - state.x2, tz - state.z2);
+    state.distance3 = Math.hypot(tx - state.x3, tz - state.z3);
+    state.distance4 = Math.hypot(tx - state.x4, tz - state.z4);
     const units = [{ callsign: POLICE_CALLSIGNS[0], distance: state.distance, mode: state.mode }];
     if (wanted >= 2) units.push({ callsign: POLICE_CALLSIGNS[1], distance: state.distance2, mode: state.mode2 });
     if (wanted >= 3) {
       units.push({ callsign: POLICE_CALLSIGNS[2], distance: state.distance3, mode: state.mode3 });
       units.push({ callsign: POLICE_CALLSIGNS[3], distance: state.distance4, mode: state.mode4 });
     }
-    return { mode: state.mode, distance: state.distance, rammed, busted: state.bustedTimer > 3, units };
+    const anySearching = wanted > 0 && units.some((u) => u.mode === 'SEARCHING');
+    return {
+      mode: state.mode,
+      distance: state.distance,
+      rammed,
+      busted: state.bustedTimer > 3,
+      units,
+      roadblockHit,
+      seen: wanted > 0 && nearest < SIGHT_RANGE,
+      // Search zone: live centre + radius, active while any unit searches.
+      searchZone: { x: state.lastSeen.x, z: state.lastSeen.z, radius: SEARCH_RADIUS, active: anySearching },
+    };
   }
 
   function teleport(x, z) {
