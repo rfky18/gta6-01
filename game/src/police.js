@@ -259,7 +259,10 @@ export function createPolice(scene, world) {
   // Roadblock anchor: how far ahead of the player VIPER-9 sets its block.
   const SIGHT_RANGE = 55;
   const ROADBLOCK_LEAD = 30;
-  const SEARCH_RADIUS = 45;
+  // v10: the search zone draws bigger on the minimap (was 45) so it reads
+  // like rank 1's big red circle + "IN SIGHT" — the sweep itself is
+  // unchanged (units orbit 18 m around the last-seen spot).
+  const SEARCH_RADIUS = 60;
 
   // Sweep point for a SEARCHING unit: slow orbit around the last-seen
   // spot, a different phase per unit so they do not stack.

@@ -66,6 +66,34 @@ export const GAME = {
   pdName: 'SVPD',
 };
 
+// v10 — tuning for vehicles Dario can steal, not just the hero Solaris:
+// traffic cars are slower family sedans, bikes are quicker, twitchier and
+// lean into corners (two wheels, less grip, more steer).
+export const TRAFFIC_CAR = {
+  accel: 14,
+  brake: 28,
+  reverseAccel: 8,
+  maxSpeed: 38,
+  maxReverse: 8,
+  steer: 1.7,
+  grip: 6,
+  handbrakeGrip: 1.2,
+  wheelRadius: 0.4,
+};
+
+export const BIKE = {
+  accel: 20,
+  brake: 32,
+  reverseAccel: 8,
+  maxSpeed: 44,
+  maxReverse: 8,
+  steer: 2.6,
+  grip: 4,
+  handbrakeGrip: 1.0,
+  wheelRadius: 0.34,
+  lean: true,
+};
+
 // v4 cover staging (shots.js stages exactly this state for ?shot=play):
 // late story (mission 7/8), REP 4 with its title, 3-star heat, a full
 // 5-unit SVPD response, and the sun low over the water at 19:12.

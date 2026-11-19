@@ -46,6 +46,13 @@ function buildEnemyMesh() {
 export function createCombat(scene, world, hooks) {
   const rng = createRandom(4242);
   const raycaster = new THREE.Raycaster();
+  // v10: pedestrians are valid targets too — a punch or a bullet can knock
+  // one down, and they get up and run (pedestrians.knockDown). Wired by
+  // main.js after the walkers exist.
+  let pedestriansRef = null;
+  function setPedestrians(p) {
+    pedestriansRef = p;
+  }
   const state = {
     slot: 0,
     mags: WEAPONS.map((w) => w.mag),
@@ -118,9 +125,23 @@ export function createCombat(scene, world, hooks) {
     for (const e of enemies) {
       if (e.hp > 0) list.push(e.mesh.group);
     }
+    // v10: walkers are shootable — GTA lets a bullet hit a pedestrian, and
+    // the raycast needs their meshes in the list to ever find them.
+    if (pedestriansRef) {
+      for (const w of pedestriansRef.walkers) list.push(w.mesh.group);
+    }
     for (const m of world.buildingMeshes || []) list.push(m);
     if (world.groundMesh) list.push(world.groundMesh);
     return list;
+  }
+
+  // v10: a walker takes a hit — falls flat, then gets up and runs. The
+  // hook lets main.js panic the street and raise the wanted level.
+  function hitWalker(w, origin) {
+    const fell = pedestriansRef.knockDown(w, origin.x, origin.z);
+    if (fell && hooks.onPedestrianHit) hooks.onPedestrianHit(w, origin.x, origin.z);
+    state.hits += 1;
+    return fell;
   }
 
   function fireOne(origin, dir, w) {
@@ -139,17 +160,26 @@ export function createCombat(scene, world, hooks) {
     const hits = raycaster.intersectObjects(shootTargets(), true);
     let end = { x: origin.x + d.x * w.range, y: (origin.y || 0) + 1.4 + d.y * w.range, z: origin.z + d.z * w.range };
     let hitEnemy = null;
+    let hitW = null;
     if (hits.length > 0) {
       const h = hits[0];
       end = { x: h.point.x, y: h.point.y, z: h.point.z };
       let node = h.object;
-      while (node && !node.userData.enemyRoot) node = node.parent;
+      while (node && !node.userData.enemyRoot && !node.userData.walkerRoot) node = node.parent;
       if (node && node.userData.enemyRoot) {
         const e = enemies.find((en) => en.mesh.group === node.userData.enemyRoot);
         if (e && e.hp > 0) hitEnemy = e;
+      } else if (node && node.userData.walkerRoot && pedestriansRef) {
+        const w2 = pedestriansRef.walkers.find((wk) => wk.mesh.group === node.userData.walkerRoot);
+        if (w2) hitW = w2;
       }
     }
     tracer(origin, end);
+    if (hitW) {
+      hitWalker(hitW, origin);
+      impact(end);
+      return { hit: true, walker: hitW, point: end };
+    }
     if (hitEnemy) {
       hitEnemy.hp -= w.damage;
       hitEnemy.lastHit = 1;
@@ -171,6 +201,60 @@ export function createCombat(scene, world, hooks) {
     return { hit: false, point: end };
   }
 
+  // v10: fists do not raycast — a punch is a short forward cone (3.4 m,
+  // ~35 deg), forgiving enough to land on a walker Dario is facing, GTA
+  // style. Nearest target in the cone takes the hit: a walker falls flat
+  // and runs, an enemy takes the fists damage.
+  function meleeAttack(origin, dir) {
+    const hLen = Math.hypot(dir.x, dir.z) || 1;
+    const hx = dir.x / hLen;
+    const hz = dir.z / hLen;
+    let best = null;
+    let bestD = 3.4;
+    const consider = (x, z, ref) => {
+      const dx = x - origin.x;
+      const dz = z - origin.z;
+      const d = Math.hypot(dx, dz);
+      if (d > bestD || d < 0.01) return;
+      if ((dx * hx + dz * hz) / d < 0.8) return;
+      bestD = d;
+      best = { ref, x, z };
+    };
+    if (pedestriansRef) {
+      for (const w of pedestriansRef.walkers) {
+        if (w.down > 0) continue;
+        const wx = w.horizontal ? w.pos : w.lane;
+        const wz = w.horizontal ? w.lane : w.pos;
+        consider(wx, wz, { walker: w });
+      }
+    }
+    for (const e of enemies) {
+      if (e.hp > 0) consider(e.x, e.z, { enemy: e });
+    }
+    if (!best) return { hit: false };
+    const point = { x: best.x, y: (origin.y || 0) + 1.2, z: best.z };
+    impact(point);
+    if (best.ref.walker) {
+      hitWalker(best.ref.walker, origin);
+      return { hit: true, walker: best.ref.walker, point };
+    }
+    const e = best.ref.enemy;
+    e.hp -= WEAPONS[0].damage;
+    e.lastHit = 1;
+    state.hits += 1;
+    if (hooks.audio) hooks.audio.hit();
+    if (e.hp <= 0) {
+      e.hp = 0;
+      e.deadTimer = 4;
+      e.mesh.group.rotation.x = -Math.PI / 2;
+      e.mesh.group.position.y = 0.4;
+      state.kills += 1;
+      if (hooks.audio) hooks.audio.enemyDown();
+      if (hooks.onEnemyDown) hooks.onEnemyDown(e.x, e.z);
+    }
+    return { hit: true, enemy: e, point };
+  }
+
   // origin: player {x, y, z}; dir: unit aim vector from the camera.
   function tryFire(origin, dir) {
     const w = weapon();
@@ -182,6 +266,14 @@ export function createCombat(scene, world, hooks) {
     state.cooldown = w.rate;
     state.mags[state.slot] -= 1;
     state.shotsFired += 1;
+    // Fists swing, they do not fire: no muzzle flash, no tracer, no
+    // bullet — the cone in meleeAttack decides the hit.
+    if (w.name === 'FISTS') {
+      if (hooks.onPanic) hooks.onPanic(origin.x, origin.z);
+      const res = meleeAttack(origin, dir);
+      if (hooks.audio && res.hit) hooks.audio.hit();
+      return res;
+    }
     muzzleFlash(origin, dir);
     if (hooks.audio) hooks.audio.shot(w.sound);
     if (hooks.onPanic) hooks.onPanic(origin.x, origin.z);
@@ -427,6 +519,7 @@ export function createCombat(scene, world, hooks) {
     clearEnemies,
     weaponInfo,
     setAmmo,
+    setPedestrians,
     stageFlash,
     weapon,
   };

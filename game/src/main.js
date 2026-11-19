@@ -44,7 +44,7 @@ const assets = await loadGameAssets();
 const world = createWorld(render.scene, seed, assets);
 const player = createPlayer(render.scene, world);
 const car = createDrivableCar(render.scene, world, { body: 0xc01616, sport: true, name: 'Solaris GT' });
-const traffic = createTraffic(render.scene, seed, 12);
+const traffic = createTraffic(render.scene, world, seed, 12);
 const pedestrians = createPedestrians(render.scene, seed, 32);
 const police = createPolice(render.scene, world);
 const hud = createHud();
@@ -72,6 +72,12 @@ const state = {
   kmh: 0,
 };
 
+// v10: the vehicle Dario is driving right now — the hero Solaris, or any
+// traffic car / bike he stole (traffic.drivableFor). Every driving read in
+// the loop goes through `driven`, never the hero car directly, so a stolen
+// car drives, steers, takes damage and shows its own name + condition.
+let driven = car;
+
 // Combat owns guns + rivals; its hooks feed back into this state.
 const combat = createCombat(render.scene, world, {
   audio,
@@ -93,7 +99,17 @@ const combat = createCombat(render.scene, world, {
   onPanic(x, z) {
     pedestrians.panicAt(x, z);
   },
+  // v10: hitting a pedestrian is a crime the street sees — the walkers
+  // panic and SVPD gets a star, like stealing a car.
+  onPedestrianHit(w, x, z) {
+    pedestrians.panicAt(x, z);
+    if (state.wanted === 0) {
+      setWanted(1);
+      hud.banner('Pedestrian down — SVPD alerted', 3);
+    }
+  },
 });
+combat.setPedestrians(pedestrians);
 
 const missions = createMissions(render.scene, world, {
   spawnEnemies(spot, count) {
@@ -166,6 +182,7 @@ function setWanted(n) {
 }
 
 function startDrivingAt(x, z, heading, speed) {
+  driven = car;
   car.place(x, z, heading);
   if (speed) car.state.speed = speed;
   state.driving = true;
@@ -173,13 +190,16 @@ function startDrivingAt(x, z, heading, speed) {
 }
 
 function exitCar() {
-  const side = car.state.heading + Math.PI / 2;
-  const px = car.state.x + Math.sin(side) * 2.4;
-  const pz = car.state.z + Math.cos(side) * 2.4;
-  player.place(px, pz, car.state.heading);
+  const v = driven.state;
+  const side = v.heading + Math.PI / 2;
+  const px = v.x + Math.sin(side) * 2.4;
+  const pz = v.z + Math.cos(side) * 2.4;
+  player.place(px, pz, v.heading);
   player.mesh.visible = true;
   state.driving = false;
-  render.snapBehind(car.state.heading, { x: px, y: 0, z: pz }, false);
+  // A stolen car stays where Dario left it — parked, still his to re-enter.
+  driven = car;
+  render.snapBehind(v.heading, { x: px, y: 0, z: pz }, false);
 }
 
 function doSave() {
@@ -230,6 +250,7 @@ function startGame(fresh) {
     state.rep = 0;
     state.wanted = 0;
     state.driving = false;
+    driven = car;
     player.place(world.playerSpawn.x, world.playerSpawn.z, -Math.PI / 2);
     player.mesh.visible = true;
     car.place(world.carSpawn.x, world.carSpawn.z, -Math.PI / 2);
@@ -273,6 +294,7 @@ function showEndScreen(kind) {
   player.place(world.garage.x, world.garage.z, 0);
   player.mesh.visible = true;
   state.driving = false;
+  driven = car;
   combat.clearEnemies();
   police.teleport(120, -120);
   doSave();
@@ -298,13 +320,13 @@ function step(dt, silent) {
   state.time += dt;
   world.update(dt, state.time);
   world.applyTimeOfDay(state.clockMinutes);
-  traffic.update(dt, state.driving ? car.state : null, police.state);
-  pedestrians.update(dt, state.driving ? car.state : player.state);
-  const target = state.driving ? car.state : player.state;
+  traffic.update(dt, state.driving ? driven.state : null, police.state);
+  pedestrians.update(dt, state.driving ? driven.state : player.state);
+  const target = state.driving ? driven.state : player.state;
   policeInfo = police.update(dt, target, state.wanted, state.time);
   // v9: ramming the roadblock costs condition, on top of the speed the
   // block itself already strips — going around stays the fast way through.
-  if (policeInfo.roadblockHit && state.driving) car.damage(1);
+  if (policeInfo.roadblockHit && state.driving) driven.damage(1);
   if (state.screen !== 'play' && !silent) return;
   if (state.screen === 'play' || silent) {
     const look = silent ? { dx: 0, dy: 0 } : input.takeLook();
@@ -321,7 +343,7 @@ function step(dt, silent) {
     let driveY = 0;
     if (state.driving) {
       const drive = input.drive();
-      const res = car.update(dt, drive);
+      const res = driven.update(dt, drive);
       state.kmh = res.kmh;
       player.setArmed(false, false);
       driveY = drive.y;
@@ -346,10 +368,10 @@ function step(dt, silent) {
       }
       prevFiring = input.firing();
     }
-    effects.update(dt, state.driving ? car.state : null, driveY);
-    combat.update(dt, state.driving ? car.state : player.state);
+    effects.update(dt, state.driving ? driven.state : null, driveY);
+    combat.update(dt, state.driving ? driven.state : player.state);
     // Mission marker proximity + combat-stage auto-advance.
-    const mpos = state.driving ? car.state : player.state;
+    const mpos = state.driving ? driven.state : player.state;
     const m = missions.update(dt, state.time, mpos, combat.enemiesAlive());
     state.missionNear = m ? m.near : false;
     state.missionDistance = m ? m.distance : 999;
@@ -379,7 +401,7 @@ function step(dt, silent) {
       doSave();
     }
     if (!silent) {
-      const speed01 = Math.min(1, Math.abs(car.state.speed) / CAR.maxSpeed);
+      const speed01 = Math.min(1, Math.abs(driven.state.speed) / CAR.maxSpeed);
       audio.setEngine(state.driving ? speed01 : 0, state.driving);
       audio.setSiren(state.wanted > 0 && policeInfo.distance < 120, state.time, state.wanted);
       render.update(dt, look, { x: target.x, y: target.y || 0, z: target.z }, state.driving, speed01);
@@ -413,10 +435,11 @@ function pushHud(dt) {
     street: streetName(pos.x, pos.z),
     // Speedometer: metres/second x 3.6 = km/h. Max car speed 47 m/s reads
     // 169 km/h (v7: raised from 34 m/s / 122 km/h) — verified in the
-    // ?shot=play staging, which drives to the real top speed.
-    kmh: state.driving ? Math.abs(car.state.speed) * 3.6 : Math.abs(player.state.speed) * 3.6,
-    vehicle: state.driving ? car.state.name : 'On foot',
-    condition: car.state.condition,
+    // ?shot=play staging, which drives to the real top speed. A stolen
+    // bike tops out at 44 m/s (158 km/h), a traffic sedan at 38 (137).
+    kmh: state.driving ? Math.abs(driven.state.speed) * 3.6 : Math.abs(player.state.speed) * 3.6,
+    vehicle: state.driving ? driven.state.name : 'On foot',
+    condition: driven.state.condition,
     policeDistance: Math.hypot(police.state.x - pos.x, police.state.z - pos.z),
     policeMode: policeInfo.mode,
     policeUnits: policeInfo.units || [],
@@ -431,8 +454,78 @@ function pushHud(dt) {
     heading: state.driving ? car.state.heading : player.state.heading,
     weapons: combat.weaponInfo(),
     showCrosshair: !state.driving && combat.state.slot > 0,
-    showInteract: state.missionNear || (!state.driving && Math.hypot(player.state.x - car.state.x, player.state.z - car.state.z) < 4),
+    showInteract: state.missionNear || (!state.driving && !!nearestVehicle()),
+    // v10: the prompt names the actual vehicle and whether it is a theft.
+    interactLabel: state.missionNear
+      ? 'Do the job'
+      : (() => {
+        const v = state.driving ? null : nearestVehicle();
+        if (!v) return 'Enter vehicle';
+        if (v.isBike) return v.stolen ? 'Ride bike' : 'Steal bike';
+        return v.stolen ? 'Enter car' : 'Steal car';
+      })(),
   });
+}
+
+// v10 — the P0 fix. E used to work on exactly one car: the hero Solaris
+// within 4 m. Now the nearest enterable vehicle in a loose 5.5 m radius
+// wins — hero car, any parked car, any moving traffic car, any bike.
+// `stolen` is per vehicle: the first theft of each one raises the heat.
+function nearestVehicle() {
+  if (state.driving) return null;
+  let best = null;
+  let bestD = 5.5;
+  const dHero = Math.hypot(player.state.x - car.state.x, player.state.z - car.state.z);
+  if (dHero < bestD) {
+    best = { kind: 'hero', name: car.state.name, stolen: state.stoleCar, isBike: false };
+    bestD = dHero;
+  }
+  for (const t of traffic.cars) {
+    const d = Math.hypot(player.state.x - t.x, player.state.z - t.z);
+    if (d < bestD) {
+      best = { kind: 'traffic', t, name: t.name, stolen: t.stolen, isBike: t.kind === 'bike' };
+      bestD = d;
+    }
+  }
+  return best;
+}
+
+function enterVehicle(v) {
+  if (v.kind === 'hero') {
+    driven = car;
+  } else {
+    const t = v.t;
+    // The driver bails (convertible driver hides), the car leaves the AI
+    // loop and stays parked wherever Dario leaves it.
+    t.stolen = true;
+    t.parked = true;
+    t.speed = 0;
+    if (t.mesh.userData.driver) t.mesh.userData.driver.visible = false;
+    driven = traffic.drivableFor(t);
+  }
+  state.driving = true;
+  player.mesh.visible = false;
+  render.snapBehind(driven.state.heading, { x: driven.state.x, y: 0, z: driven.state.z }, true);
+  if (!v.stolen) {
+    if (!state.stoleCar) {
+      state.stoleCar = true;
+      hud.say(GAME.fixerName, v.kind === 'hero'
+        ? 'That Solaris isn’t yours, Dario — drive it like it is. SVPD is coming.'
+        : 'That one isn’t yours either, Dario — drive it like it is. SVPD is coming.', 6);
+    }
+    setWanted(Math.max(state.wanted, 1));
+    hud.banner(v.isBike ? 'Bike stolen, wanted ★' : 'Vehicle stolen, wanted ★', 3);
+  } else {
+    hud.banner(v.isBike ? 'Back on the bike' : 'Back in the car', 2);
+  }
+}
+
+// Staging hook (shots.js 'bike'): enter whatever vehicle is nearest,
+// without a keypress.
+function enterNearestVehicle() {
+  const v = nearestVehicle();
+  if (v) enterVehicle(v);
+  return !!v;
 }
 
 function handleInteract() {
@@ -461,18 +554,8 @@ function handleInteract() {
     }
     return;
   }
-  const dCar = Math.hypot(player.state.x - car.state.x, player.state.z - car.state.z);
-  if (dCar < 4) {
-    state.driving = true;
-    player.mesh.visible = false;
-    render.snapBehind(car.state.heading, { x: car.state.x, y: 0, z: car.state.z }, true);
-    if (!state.stoleCar) {
-      state.stoleCar = true;
-      setWanted(1);
-      hud.say(GAME.fixerName, 'That Solaris isn’t yours, Dario — drive it like it is. SVPD is coming.', 6);
-      hud.banner('Vehicle stolen, wanted ★', 3);
-    }
-  }
+  const v = nearestVehicle();
+  if (v) enterVehicle(v);
 }
 
 function handleActions() {
@@ -542,7 +625,7 @@ function runShot(name) {
   let painted = 0;
   function paint() {
     pushHud(1 / 60);
-    render.update(1 / 60, { dx: 0, dy: 0 }, state.driving ? { x: car.state.x, y: 0, z: car.state.z } : { x: player.state.x, y: 0, z: player.state.z }, state.driving, state.driving ? 0.6 : 0);
+    render.update(1 / 60, { dx: 0, dy: 0 }, state.driving ? { x: driven.state.x, y: 0, z: driven.state.z } : { x: player.state.x, y: 0, z: player.state.z }, state.driving, state.driving ? 0.6 : 0);
     // v7: re-face the dust/smoke puffs at the paint camera — the staging
     // steps billboarded them to the pre-snap camera, which is edge-on
     // from the final framing (see effects.js billboard()).
@@ -572,6 +655,11 @@ const game = {
   audio,
   setWanted,
   startDrivingAt,
+  enterNearestVehicle,
+  nearestVehicle,
+  get driven() {
+    return driven;
+  },
   step,
   get screen() {
     return state.screen;

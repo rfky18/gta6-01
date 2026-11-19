@@ -30,7 +30,12 @@ function buildWalkerMesh(shirtColor) {
   head.position.y = 1.7;
   group.add(legL, legR, torso, head);
   group.traverse((m) => {
-    if (m.isMesh) m.castShadow = true;
+    if (m.isMesh) {
+      m.castShadow = true;
+      // v10: raycast tag, like combat's enemyRoot — so a punch or a bullet
+      // can find the walker it hit instead of only the building behind.
+      m.userData.walkerRoot = group;
+    }
   });
   return { group, legL, legR };
 }
@@ -59,8 +64,11 @@ export function createPedestrians(scene, seed, count) {
       phase: rng() * 6,
       dodge: 0,
       panic: 0,
+      down: 0, // v10: seconds left lying flat after being hit — GTA-style.
+      fleeFrom: null,
     });
     walkers[i].baseSpeed = walkers[i].speed;
+    mesh.group.userData.walker = walkers[i];
   }
 
   // Gunfire at (x, z): walkers within 26 m run away from it.
@@ -114,6 +122,19 @@ export function createPedestrians(scene, seed, count) {
 
   function update(dt, threat) {
     for (const w of walkers) {
+      // v10: knocked down — lie flat, skip the walk cycle, then get up and
+      // run. The panic set by knockDown survives the fall (it is not
+      // ticked down while down), so they flee the moment they stand.
+      if (w.down > 0) {
+        w.down -= dt;
+        if (w.down <= 0) {
+          w.mesh.group.rotation.x = 0;
+          w.mesh.group.position.y = 0;
+          w.panic = 4;
+          if (w.fleeFrom) panicAt(w.fleeFrom.x, w.fleeFrom.z);
+        }
+        continue;
+      }
       const speed = w.panic > 0 ? w.baseSpeed * 2.6 : w.baseSpeed;
       if (w.panic > 0) w.panic -= dt;
       w.pos += w.dir * speed * dt;
@@ -126,8 +147,10 @@ export function createPedestrians(scene, seed, count) {
       }
       let x = w.horizontal ? w.pos : w.lane;
       let z = w.horizontal ? w.lane : w.pos;
-      // Step aside when a car (or the player) rushes at them.
-      if (threat) {
+      // Step aside when a car (or the player) rushes at them — but never
+      // while panicking: a fleeing walker already runs from the threat,
+      // and flipping it would send it back toward the punch.
+      if (threat && w.panic <= 0) {
         const d = Math.hypot(threat.x - x, threat.z - z);
         if (d < 6 && w.dodge <= 0) {
           w.dodge = 1.2;
@@ -144,5 +167,16 @@ export function createPedestrians(scene, seed, count) {
     }
   }
 
-  return { walkers, update, panicAt, placeSidewalk, placeBeach };
+  // v10: hit by Dario (fists or a bullet) — fall flat for 2.5 s, then get
+  // up and run from the spot it happened. Returns false if already down.
+  function knockDown(w, fromX, fromZ) {
+    if (w.down > 0) return false;
+    w.down = 2.5;
+    w.fleeFrom = { x: fromX, z: fromZ };
+    w.mesh.group.rotation.x = -Math.PI / 2;
+    w.mesh.group.position.y = 0.4;
+    return true;
+  }
+
+  return { walkers, update, panicAt, knockDown, placeSidewalk, placeBeach };
 }

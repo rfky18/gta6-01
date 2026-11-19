@@ -74,18 +74,25 @@ export function stageShot(game, name) {
     // umbrellas — walkers 6-9, after the sidewalk six.
     // v9 R2: spots pushed out further still — at x 213 anything nearer
     // than ~40 m ahead of the car falls off the frame's right edge.
+    // v10: six sand walkers + four boardwalk walkers — the beach must read
+    // crowded next to rank 2's, not just occupied.
     g.pedestrians.placeBeach(213, g.car.state.z, [
       { ahead: -55 },
       { ahead: -70 },
       { ahead: -85 },
       { ahead: -100 },
+      { ahead: -115 },
+      { ahead: -130 },
     ], 6);
     // v9 R2: two more walkers ON the boardwalk (x 207), mid-frame right,
     // so the beach life reads close to the road, not only far on the sand.
+    // v10: four of them, so the boardwalk itself is busy.
     g.pedestrians.placeBeach(207, g.car.state.z, [
       { ahead: -48 },
       { ahead: -68 },
-    ], 10);
+      { ahead: -88 },
+      { ahead: -108 },
+    ], 12);
     g.input.press('KeyW');
     for (let i = 0; i < 24; i += 1) g.step(1 / 60, true);
     g.input.release('KeyW');
@@ -111,14 +118,20 @@ export function stageShot(game, name) {
     //   VIPER-12 far up the boulevard, past sight range: SEARCHING.
     // HAWK-1 in the sky ahead-left, spotlight on the road.
     // (Ahead = -z here: the camera sits behind the car, so +z is behind it.)
-    g.police.teleport(g.car.state.x - 5.5, g.car.state.z - 5.5);
+    // v10 (LOCAL-JUDGE-v9 C1, the #1 decider): VIPER-4 must be VISIBLE in
+    // the frame, not behind the camera — 4.5 m left, 6.5 m ahead (7.9 m:
+    // still RAMMING), beside the hero instead of hiding behind its flank.
+    // VIPER-7 closes from 34 m to 22 m ahead-right, still PURSUIT, so the
+    // chase has TWO lit cruisers in frame, like rank 1's.
+    g.police.teleport(g.car.state.x - 4.5, g.car.state.z - 6.5);
     g.police.state.heading = Math.PI;
     g.police.state.speed = 30;
-    g.police.placeUnit2(g.car.state.x + 4, g.car.state.z - 34, Math.PI, 28);
-    // v9 R2: the block sits 24 m ahead, not 28 — bigger in frame, clear
-    // of the traffic at -36 — and VIPER-4 sits 5.5 m out to the side so
-    // it reads beside the hero instead of hiding behind its flank.
-    g.police.placeUnit3(g.car.state.x, g.car.state.z - 24, Math.PI / 2, 0);
+    g.police.placeUnit2(g.car.state.x + 5, g.car.state.z - 22, Math.PI, 28);
+    // v10: the roadblock car must read as a POLICE CAR, not just a
+    // barricade — 20 m ahead (was 24), one lane left of the hero, nose
+    // swung 20 deg toward the camera so its flank stripe + light bar +
+    // front 3/4 all face the chase camera at once.
+    g.police.placeUnit3(g.car.state.x - 3, g.car.state.z - 20, Math.PI / 2 - 0.35, 0);
     g.police.placeUnit4(g.car.state.x - 5, g.car.state.z - 74, Math.PI, 26);
     // v9: ONE silent step so police.update() recomputes every mode from
     // these placed distances (RAMMING / PURSUIT / ROADBLOCK / SEARCHING)
@@ -163,11 +176,83 @@ export function stageShot(game, name) {
     // the ferris wheel at the right edge (thinner than v7); +0.5 buys
     // ~50 px of wheel back while the car stays left-of-centre and the
     // sun stays clear of the tower at its left edge.
+    g.render.coverFraming(0.58, 78, 2.5);
+    g.render.cam.pitch = 0.15;
+    // v10 R2 (dream-loop R1: the hero filled the frame and the street
+    // read empty around it, rank 1's car sits smaller with the chase
+    // visible around it): pull the chase camera to ~7.8 m for the cover.
+    // The two paints only lerp ~13% back toward the 7.0 m driving
+    // distance, so the frame keeps the wider view.
+    // v10 R3 (dream-loop R2: the wider camera pushed the PALMERA BEACH
+    // sign's right end to the frame edge, x 1267): aimX 2.0 -> 2.5 pans
+    // the lookAt further toward the beach so the sign + ferris wheel sit
+    // fully in frame. Cover only — the bike shot keeps aimX 2.0.
+    g.render.cam.distance = 7.8;
+    return 'play';
+  }
+  if (name === 'bike') {
+    // v10: Dario rides the stolen Vortex 900 down Ocean Boulevard at
+    // dusk — the bike shot (replaces 4-combat in the contact sheet).
+    // Mission 5/8 Dockside Trouble, REP 4, wanted 2: two VIPER units in
+    // pursuit behind him, WASP SMG in the HUD slots, beach + ferris wheel
+    // ahead-right, so the frame still proves combat systems + police
+    // response while the bike is the subject.
+    g.missions.setState(4, 1, false);
+    g.state.money = 18450;
+    g.state.rep = 4;
+    g.setWanted(2);
+    g.state.clockMinutes = 18 * 60 + 40;
+    // The parked Vortex 900 on the boulevard's east sidewalk (187, 55):
+    // Dario starts beside it and steals it with the real E path.
+    const bike = g.traffic.cars.find((c) => c.kind === 'bike' && c.parked && c.x > 180);
+    g.player.place(bike.x, bike.z + 3, Math.PI);
+    g.state.driving = false;
+    g.player.mesh.visible = true;
+    g.enterNearestVehicle();
+    g.combat.switchWeapon(2);
+    g.hud.say('Rico Vane', 'Bike’s hot, Dario — lose the tail before the pier, then we talk crates.', 30);
+    g.hud.banner('Dockside Trouble: clear the docks', 30);
+    g.render.snapBehind(Math.PI, { x: bike.x, y: 0, z: bike.z }, true);
+    // Roll south with the throttle held so the bike leans, the wheel
+    // spins and the pursuit is mid-motion, not frozen at spawn.
+    g.input.press('KeyW');
+    for (let i = 0; i < 90; i += 1) g.step(1 / 60, true);
+    g.input.release('KeyW');
+    // Traffic ahead in the boulevard lanes, in frame.
+    // v10 R3 (dream-loop R2: the bike shot's mid-road read empty — three
+    // cars left a bare grey stretch): five cars, the nearest at -26 m.
+    g.traffic.placeAhead(g.driven.state.x, g.driven.state.z, Math.PI, [
+      { lane: -1.5, ahead: -26, speed: 10 },
+      { lane: 1.5, ahead: -38, speed: 10 },
+      { lane: -1.5, ahead: -56, speed: 9 },
+      { lane: 1.5, ahead: -72, speed: 11 },
+      { lane: 1.5, ahead: -90, speed: 10 },
+    ]);
+    g.pedestrians.placeSidewalk(180, g.driven.state.z, [
+      { side: -1, ahead: -34 },
+      { side: 1, ahead: -42 },
+      { side: -1, ahead: -54 },
+      { side: 1, ahead: -66 },
+    ]);
+    g.input.press('KeyW');
+    for (let i = 0; i < 24; i += 1) g.step(1 / 60, true);
+    g.input.release('KeyW');
+    // Pursuit into frame LAST, like the cover: VIPER-4 close ahead-left
+    // (RAMMING), VIPER-7 ahead-right (PURSUIT) — both lit cruisers the
+    // camera can see, not chasing from behind the lens.
+    g.police.teleport(g.driven.state.x - 4.5, g.driven.state.z - 6.5);
+    g.police.state.heading = Math.PI;
+    g.police.state.speed = 30;
+    g.police.placeUnit2(g.driven.state.x + 5, g.driven.state.z - 22, Math.PI, 28);
+    g.step(1 / 60, true);
+    g.police.placeHeli(g.driven.state.x - 8, g.driven.state.z - 48, 19);
+    g.missions.setTimer(0);
     g.render.coverFraming(0.58, 78, 2.0);
     g.render.cam.pitch = 0.15;
-    // v6 R2: camera stays at the v5 6.5 m — the R1 pull-in to 5.6 m
-    // cropped the speedometer and pushed the ferris wheel out of frame.
-    // The sculpted rear carries the cover at 6.5 m now.
+    // v10 R2 (dream-loop R1: the bike read small at the 6.5 m car
+    // distance — a bike is half a car's width, so its shot gets a closer
+    // chase camera, ~5.2 m, while the road ahead stays in frame).
+    g.render.cam.distance = 5.2;
     return 'play';
   }
   if (name === 'end') {

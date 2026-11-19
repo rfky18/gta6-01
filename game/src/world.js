@@ -904,6 +904,10 @@ export function createWorld(scene, seed, assets) {
   }
   for (const [x, z] of palmSpots) {
     if (Math.abs(x) > 235 || Math.abs(z) > 235) continue;
+    // v10: keep the sight corridor to the PALMERA BEACH sign (210, -52)
+    // clear — a palm in x 192..212, z -70..-30 stands between the chase
+    // camera and the sign's right end and hides it (v9 defect).
+    if (x >= 192 && x <= 212 && z >= -70 && z <= -30) continue;
     const palm = makePalm();
     palm.position.set(x + range(rng, -2, 2), 0, z + range(rng, -2, 2));
     palm.rotation.y = rng() * Math.PI * 2;
@@ -992,6 +996,40 @@ export function createWorld(scene, seed, assets) {
       scene.add(chairNeon);
     }
     umbrellaIdx += 1;
+  }
+  // v10: a second, deeper row of umbrellas (x 226..232, z -90..30, offset
+  // 6 m from the first row) so the beach reads DENSE from the road, like
+  // rank 2's — two rows of colour + chairs instead of one thin line.
+  // Fixed offsets, no rng consumed, so the seeded layout after this point
+  // does not shift.
+  for (let i = 0; i < 11; i += 1) {
+    const ux = 226 + (i % 3) * 3;
+    const uz = -90 + i * 12;
+    const umbrellaMat = new THREE.MeshLambertMaterial({ color: umbrellaColors[i % umbrellaColors.length], side: THREE.DoubleSide });
+    const umb = new THREE.Mesh(new THREE.ConeGeometry(2.2, 1.2, 8), umbrellaMat);
+    umb.position.set(ux, 2.4, uz);
+    scene.add(umb);
+    const trim = new THREE.Mesh(umbrellaTrimGeo, i % 2 === 0 ? umbrellaTrimPink : umbrellaTrimCyan);
+    trim.position.set(ux, 2.05, uz);
+    scene.add(trim);
+    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.4, 6), poleMat);
+    stick.position.set(ux, 1.2, uz);
+    scene.add(stick);
+    if (i % 2 === 0) {
+      const chairMat = new THREE.MeshLambertMaterial({ color: [0xf2f2f2, 0x37e0ff, 0xff8a3e][(i / 2) % 3] });
+      const seat = new THREE.Mesh(boxGeo, chairMat);
+      seat.scale.set(0.7, 0.12, 1.7);
+      seat.position.set(ux - 2.6, 0.35, uz + 1.2);
+      scene.add(seat);
+      const back = new THREE.Mesh(boxGeo, chairMat);
+      back.scale.set(0.7, 0.12, 0.9);
+      back.position.set(ux - 2.6, 0.6, uz + 2.3);
+      back.rotation.x = -0.6;
+      scene.add(back);
+      const chairNeon = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.05, 0.08), umbrellaTrimCyan);
+      chairNeon.position.set(ux - 2.6, 0.44, uz + 0.35);
+      scene.add(chairNeon);
+    }
   }
   // v9 R2: boardwalk parasols — three big umbrellas ON the boardwalk edge
   // (x 207), close to the road, so the beach reads in the mid-frame right

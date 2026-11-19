@@ -44,6 +44,26 @@ function makePlateTexture() {
   return plateTex;
 }
 
+// SVPD rear text (police only): white on transparent, so a cruiser reads
+// as a police car from the chase camera — which only ever sees the back
+// of the car ahead of it. Drawn once, shared like the plate texture.
+let svpdTex = null;
+function makeSvpdTexture() {
+  if (svpdTex) return svpdTex;
+  const c = document.createElement('canvas');
+  c.width = 256;
+  c.height = 64;
+  const g = c.getContext('2d');
+  g.clearRect(0, 0, 256, 64);
+  g.fillStyle = '#ffffff';
+  g.font = 'bold 44px sans-serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText('SVPD', 128, 34);
+  svpdTex = new THREE.CanvasTexture(c);
+  return svpdTex;
+}
+
 // 5-spoke rim texture for the hub caps: dark disc, gunmetal spokes, centre dot.
 let spokeTex = null;
 function makeSpokeTexture() {
@@ -204,6 +224,9 @@ export function buildCarMesh(opts) {
     group.add(deflector);
     // Driver, left seat: shirt, head, hair — visible over the door line
     // from the chase camera, so the car is clearly occupied.
+    // v10: the driver is its own group (userData.driver) so stealing the
+    // convertible hides the driver — he got out, Dario got in.
+    const driver = new THREE.Group();
     const driverShirt = new THREE.MeshLambertMaterial({ color: 0x37b6ff });
     const driverSkin = new THREE.MeshLambertMaterial({ color: 0xc98d64 });
     const driverHair = new THREE.MeshLambertMaterial({ color: 0x2a2018 });
@@ -213,7 +236,9 @@ export function buildCarMesh(opts) {
     head.position.set(-0.42, 1.55, -0.35);
     const hair = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.14, 0.36), driverHair);
     hair.position.set(-0.42, 1.76, -0.35);
-    group.add(torso, head, hair);
+    driver.add(torso, head, hair);
+    group.add(driver);
+    group.userData.driver = driver;
   } else {
     group.add(cabin, roof, windshield, rearGlass);
   }
@@ -417,6 +442,16 @@ export function buildCarMesh(opts) {
     const stripe = new THREE.Mesh(GEO.stripe, new THREE.MeshLambertMaterial({ color: 0xf2f2f2 }));
     stripe.position.y = 0.72;
     group.add(stripe);
+    // v10: "SVPD" on the sloped rear glass — the one face the chase
+    // camera always sees — so a black cruiser reads as a police car, not
+    // a generic dark sedan, at contact-sheet scale.
+    const svpd = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.3, 0.32),
+      new THREE.MeshBasicMaterial({ map: makeSvpdTexture(), transparent: true }),
+    );
+    svpd.position.set(0, 1.12, -1.34);
+    svpd.rotation.x = 0.5;
+    group.add(svpd);
   }
   // Wheels: 5-spoke rims (canvas texture on the hub caps, spun with the
   // wheels); hero rear track is wider with wider rear tires (spec).
@@ -461,6 +496,144 @@ export function setBraking(mesh, braking) {
   mesh.userData.tailMat.color.setHex(braking ? 0xff2e2e : 0xdd2222);
 }
 
+// v10 — rideable motorbike. Two wheels inline, a low tank + seat, and a
+// rider leaning forward to the bars (teal jacket, orange helmet — Dario's
+// colours, so the rider reads as the player, not a stranger). The carrier
+// group takes the physics position/heading; userData.visual takes the lean
+// (roll around the forward axis), so a bike visibly tips into corners
+// where a car stays flat. Wheels spin like the cars' (userData.wheels).
+export function buildBikeMesh(opts) {
+  const o = opts || {};
+  const bodyColor = o.body || 0xff2e88;
+  const carrier = new THREE.Group();
+  const visual = new THREE.Group();
+  carrier.add(visual);
+  const bodyMat = new THREE.MeshPhongMaterial({ color: bodyColor, shininess: 70, specular: 0x553333 });
+  const darkMat = new THREE.MeshLambertMaterial({ color: 0x14161c });
+  const chromeMat = new THREE.MeshPhongMaterial({ color: 0xd8dde2, shininess: 110, specular: 0xffffff });
+  const wheelGeo = new THREE.CylinderGeometry(0.34, 0.34, 0.14, 12);
+  const wheels = [];
+  for (const wz of [0.72, -0.72]) {
+    const wheel = new THREE.Mesh(wheelGeo, darkMat);
+    wheel.rotation.z = Math.PI / 2;
+    wheel.position.set(0, 0.34, wz);
+    wheel.castShadow = true;
+    visual.add(wheel);
+    wheels.push(wheel);
+  }
+  const tank = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.3, 0.7), bodyMat);
+  tank.position.set(0, 0.78, 0.25);
+  tank.rotation.x = -0.15;
+  visual.add(tank);
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.12, 0.75), darkMat);
+  seat.position.set(0, 0.82, -0.45);
+  visual.add(seat);
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 1.1), darkMat);
+  frame.position.set(0, 0.55, 0);
+  visual.add(frame);
+  const fork = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.7, 0.1), chromeMat);
+  fork.position.set(0, 0.62, 0.68);
+  fork.rotation.x = 0.5;
+  visual.add(fork);
+  const bars = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.07, 0.07), darkMat);
+  bars.position.set(0, 0.98, 0.52);
+  visual.add(bars);
+  const headlamp = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.16, 0.06), new THREE.MeshBasicMaterial({ color: 0xfffbe0 }));
+  headlamp.position.set(0, 0.82, 0.86);
+  visual.add(headlamp);
+  const tailLamp = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.08, 0.06), new THREE.MeshBasicMaterial({ color: 0xdd2222 }));
+  tailLamp.position.set(0, 0.78, -0.88);
+  visual.add(tailLamp);
+  const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.6, 8), chromeMat);
+  exhaust.rotation.x = Math.PI / 2;
+  exhaust.position.set(0.2, 0.42, -0.5);
+  visual.add(exhaust);
+  // Rider: leaning forward, hands on the bars, knees bent — the lean is
+  // the bike's, the pose is fixed, so the rider tips with the machine.
+  const jacketMat = new THREE.MeshLambertMaterial({ color: 0x1f8a70 });
+  const pantsMat = new THREE.MeshLambertMaterial({ color: 0x2a2f3a });
+  const skinMat = new THREE.MeshLambertMaterial({ color: 0xc98d64 });
+  const helmetMat = new THREE.MeshPhongMaterial({ color: 0xe8a34c, shininess: 60 });
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.55, 0.3), jacketMat);
+  torso.position.set(0, 1.12, -0.15);
+  torso.rotation.x = 0.55;
+  visual.add(torso);
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.36, 0.36), helmetMat);
+  head.position.set(0, 1.48, 0.12);
+  visual.add(head);
+  for (const s of [-1, 1]) {
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.55), jacketMat);
+    arm.position.set(s * 0.28, 1.28, 0.32);
+    arm.rotation.x = 0.9;
+    visual.add(arm);
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.5, 0.16), pantsMat);
+    leg.position.set(s * 0.26, 0.72, -0.25);
+    leg.rotation.x = -0.7;
+    visual.add(leg);
+  }
+  visual.traverse((m) => {
+    if (m.isMesh) m.castShadow = true;
+  });
+  carrier.userData.wheels = wheels;
+  carrier.userData.visual = visual;
+  return carrier;
+}
+
+// v10 — one shared arcade-vehicle step, so the hero car, a stolen traffic
+// car and a stolen bike all drive on the same physics instead of three
+// copies. `tune` carries accel/brake/top speed/steer/grip/wheel radius
+// (CAR in config.js for the hero, TRAFFIC_CAR / BIKE for the rest).
+// Returns {x, z, speed, heading, kmh, collided}.
+export function stepVehicle(state, mesh, world, dt, drive, tune) {
+  const forward = drive.y;
+  if (forward > 0) state.speed += tune.accel * dt;
+  else if (forward < 0) {
+    if (state.speed > 0.5) state.speed -= tune.brake * dt;
+    else state.speed -= tune.reverseAccel * dt;
+  } else {
+    // Rolling drag.
+    state.speed -= state.speed * 0.6 * dt;
+  }
+  if (drive.handbrake) state.speed -= state.speed * 2.4 * dt;
+  state.speed = Math.max(-tune.maxReverse, Math.min(tune.maxSpeed, state.speed));
+  if (Math.abs(state.speed) < 0.05) state.speed = 0;
+  setBraking(mesh, forward < 0 || drive.handbrake);
+  const grip = drive.handbrake ? tune.handbrakeGrip : tune.grip;
+  const targetSteer = drive.x * tune.steer * Math.min(1, Math.abs(state.speed) / 8);
+  state.steer += (targetSteer - state.steer) * Math.min(1, dt * grip);
+  state.heading += (state.steer * state.speed * dt) / 2.6;
+  const fx = Math.sin(state.heading);
+  const fz = Math.cos(state.heading);
+  state.x += fx * state.speed * dt;
+  state.z += fz * state.speed * dt;
+  let collided = false;
+  const fixed = world.resolveCollision(state.x, state.z, 1.9);
+  if (fixed.x !== state.x || fixed.z !== state.z) {
+    state.speed *= 0.4;
+    collided = true;
+  }
+  state.x = Math.max(-236, Math.min(234, fixed.x));
+  state.z = Math.max(-238, Math.min(238, fixed.z));
+  mesh.position.set(state.x, 0, state.z);
+  mesh.rotation.y = state.heading;
+  // Spin the wheels (v3 wheel radius 0.40 on cars, 0.34 on bikes).
+  const spin = (state.speed * dt) / (tune.wheelRadius || 0.4);
+  for (const wheel of mesh.userData.wheels || []) wheel.rotation.x += spin;
+  // Two wheels lean into the turn; four wheels stay flat.
+  if (tune.lean && mesh.userData.visual) {
+    const lean = Math.max(-0.38, Math.min(0.38, -state.steer * Math.min(1, Math.abs(state.speed) / 12) * 0.55));
+    mesh.userData.visual.rotation.z = lean;
+  }
+  return { x: state.x, z: state.z, speed: state.speed, heading: state.heading, kmh: Math.abs(state.speed) * 3.6, collided };
+}
+
+// Damage from crashes / rams: condition drops, smoke shows below 50.
+export function damageVehicle(state, mesh, amount) {
+  state.condition = Math.max(40, (state.condition ?? 100) - amount);
+  if (mesh && mesh.userData.smoke) mesh.userData.smoke.visible = state.condition < 50;
+  return state.condition;
+}
+
 // Drivable car state machine.
 export function createDrivableCar(scene, world, opts) {
   const mesh = buildCarMesh(opts);
@@ -486,47 +659,24 @@ export function createDrivableCar(scene, world, opts) {
 
   // drive: {x steer -1..1, y throttle 1 / brake -1, handbrake bool}
   function update(dt, drive) {
-    const forward = drive.y;
-    if (forward > 0) state.speed += CAR.accel * dt;
-    else if (forward < 0) {
-      if (state.speed > 0.5) state.speed -= CAR.brake * dt;
-      else state.speed -= CAR.reverseAccel * dt;
-    } else {
-      // Rolling drag.
-      state.speed -= state.speed * 0.6 * dt;
-    }
-    if (drive.handbrake) state.speed -= state.speed * 2.4 * dt;
-    state.speed = Math.max(-CAR.maxReverse, Math.min(CAR.maxSpeed, state.speed));
-    if (Math.abs(state.speed) < 0.05) state.speed = 0;
-    setBraking(mesh, forward < 0 || drive.handbrake);
-    const grip = drive.handbrake ? CAR.handbrakeGrip : CAR.grip;
-    const targetSteer = drive.x * CAR.steer * Math.min(1, Math.abs(state.speed) / 8);
-    state.steer += (targetSteer - state.steer) * Math.min(1, dt * grip);
-    state.heading += (state.steer * state.speed * dt) / 2.6;
-    const fx = Math.sin(state.heading);
-    const fz = Math.cos(state.heading);
-    state.x += fx * state.speed * dt;
-    state.z += fz * state.speed * dt;
-    const fixed = world.resolveCollision(state.x, state.z, 1.9);
-    if (fixed.x !== state.x || fixed.z !== state.z) {
-      state.speed *= 0.4;
-      damage(0.4);
-    }
-    state.x = Math.max(-236, Math.min(234, fixed.x));
-    state.z = Math.max(-238, Math.min(238, fixed.z));
-    mesh.position.set(state.x, 0, state.z);
-    mesh.rotation.y = state.heading;
-    // Spin the wheels (v3 wheel radius 0.40).
-    const spin = (state.speed * dt) / 0.4;
-    for (const wheel of mesh.userData.wheels) wheel.rotation.x += spin;
-    return { x: state.x, z: state.z, speed: state.speed, heading: state.heading, kmh: Math.abs(state.speed) * 3.6 };
+    const res = stepVehicle(state, mesh, world, dt, drive, {
+      accel: CAR.accel,
+      brake: CAR.brake,
+      reverseAccel: CAR.reverseAccel,
+      maxSpeed: CAR.maxSpeed,
+      maxReverse: CAR.maxReverse,
+      steer: CAR.steer,
+      grip: CAR.grip,
+      handbrakeGrip: CAR.handbrakeGrip,
+      wheelRadius: 0.4,
+    });
+    if (res.collided) damage(0.4);
+    return res;
   }
 
   // Damage from crashes / rams: condition drops, smoke shows below 50.
   function damage(amount) {
-    state.condition = Math.max(40, state.condition - amount);
-    if (mesh.userData.smoke) mesh.userData.smoke.visible = state.condition < 50;
-    return state.condition;
+    return damageVehicle(state, mesh, amount);
   }
 
   return { state, mesh, place, update, damage };

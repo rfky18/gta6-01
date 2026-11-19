@@ -54,6 +54,7 @@ export function createHud() {
   const minimap = el('minimap');
   const mctx = minimap.getContext('2d');
   const interactEl = el('hud-interact');
+  const interactLabelEl = el('interact-label');
   const weaponSlotsEl = el('weapon-slots');
   const crosshairEl = el('crosshair');
   const hitmarkEl = el('hitmarker');
@@ -136,6 +137,10 @@ export function createHud() {
     } else {
       policePanel.style.display = 'none';
     }
+    // v10: the prompt names the actual vehicle + theft ("Steal car",
+    // "Steal bike", "Ride bike", "Enter car") — main.js owns the wording,
+    // the HUD only displays it.
+    if (info.interactLabel && interactLabelEl) interactLabelEl.textContent = info.interactLabel;
     interactEl.style.display = info.showInteract ? 'block' : 'none';
     if (crosshairEl) crosshairEl.style.display = info.showCrosshair ? 'block' : 'none';
     if (hitTimer > 0) {
