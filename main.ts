@@ -34,7 +34,7 @@ if (existsSync(join(here, 'screenshots'))) cpSync(join(here, 'screenshots'), joi
 // (1.960 / 2.400 XP), mission timer 2:40 + PAR BONUS +$650, combat staged
 // at REP 4, warm orange sun, textured road, varied building windows,
 // sculpt pass 2 on the Solaris GT (steeper wedge, brighter headlights).
-const ENTRY_VERSION = 'v7 — rank-3 deciders: tire dust + exhaust smoke behind the car at speed (real VFX, advected with the car), sun moved onto the Ocean Boulevard axis (full low disc at the end of the road, no longer half-hidden by a tower), sculpted side panels (dark shoulder crease, layered skirt blade + neon stripe, fender arch trims, door slash), headlight glow (beam cones + road pools ahead), real top speed raised to 169 km/h (driven to in the cover staging), end shot re-staged to Ocean Boulevard (sun on the road axis, ferris wheel, crisp road)';
+const ENTRY_VERSION = 'v8 — rank-3 execution: three-quarter chase camera (yaw 0.58 + aim pan keeps ferris wheel in frame), golden-hour haze around the sun (deep-gold disc, wider halo, layered haze discs + puffs, warm fog), dust trail streaming back along the road (half-advection, denser + wider + bigger puffs), visible HAWK-1 spotlight beam (wide core + outer cone, road pool, searchlight bulb) landing on VIPER-7';
 writeFileSync(
   join(out, 'dossier.json'),
   buildDossier(out, {

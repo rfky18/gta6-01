@@ -76,7 +76,9 @@ export function createRender(canvas) {
     };
     camera.position.set(eye.x, eye.y, eye.z);
     // Driving: look more level so the sky, sun and helicopter stay in frame.
-    camera.lookAt(target.x, target.y + (driving ? 2.0 : 1.3), target.z);
+    // v8: coverFraming may pan the aim sideways (cam.aimX) so a swung
+    // three-quarter camera still keeps the ferris wheel in frame.
+    camera.lookAt(target.x + (cam.aimX || 0), target.y + (driving ? 2.0 : 1.3), target.z);
   }
 
   // Snap the camera behind a heading (used when entering a car / staging shots).
@@ -100,10 +102,14 @@ export function createRender(canvas) {
   // immediately (the shot paints only twice, so the normal FOV lerp in
   // update() would not get there in time). yawOffset swings the chase cam
   // slightly to the side so the hero car reads as a car, not a flat box.
-  function coverFraming(yawOffset, fov) {
+  // v8: aimX pans the lookAt point sideways (metres, +x = toward the
+  // beach/ferris wheel) so the swung camera does not push the wheel out
+  // of frame — the wheel is the cover's right-edge landmark.
+  function coverFraming(yawOffset, fov, aimX) {
     cam.yaw += yawOffset;
     cam.targetYaw = cam.yaw;
     cam.baseFov = fov;
+    cam.aimX = aimX || 0;
     camera.fov = fov + 3;
     camera.updateProjectionMatrix();
   }

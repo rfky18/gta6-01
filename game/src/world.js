@@ -388,7 +388,7 @@ function makePalm() {
 const TOD = {
   day: { sun: 0xfff2d0, sunI: 1.5, hemiI: 0.95, ambI: 0.45, fog: 0xcfe0ea, sky: ['#7fb3e8', '#a8c8e8', '#f2d8a0'], lamp: 0.25 },
   golden: { sun: 0xffb36b, sunI: 1.25, hemiI: 0.85, ambI: 0.42, fog: 0xf2a06b, sky: ['#4a2a7e', '#d64a7a', '#ff8a3e'], lamp: 0.6 },
-  sunset: { sun: 0xff8a4a, sunI: 1.1, hemiI: 0.55, ambI: 0.28, fog: 0xe87a8a, sky: ['#5a3a8a', '#e86a92', '#ff9e3e'], lamp: 1.0 },
+  sunset: { sun: 0xff8a4a, sunI: 1.25, hemiI: 0.55, ambI: 0.28, fog: 0xef8f66, sky: ['#5a3a8a', '#e86a92', '#ff9e3e'], lamp: 1.0 },
   night: { sun: 0x8aa0c8, sunI: 0.25, hemiI: 0.3, ambI: 0.18, fog: 0x1a2038, sky: ['#0a0e22', '#1a2040', '#2a2a4a'], lamp: 1.6 },
 };
 function todPhase(minutes) {
@@ -463,14 +463,17 @@ export function createWorld(scene, seed, assets) {
   // v4: WARM ORANGE sun, sharp edge, never blown/pale — the v3 disc read
   // yellow-white in the cover (LOCAL-JUDGE-v3 C3). Core is deep orange
   // (255,128,40), solid to 0.60, hard cut by 0.70; no white-hot centre.
+  // v8: deeper golden core (was 255,176,64 pale yellow — ACES washed the
+  // disc pale against the magenta sky; rank 3's sun is deep gold, not
+  // white-yellow). Core 255,150,36 -> mid 255,118,28, hard cut by 0.70.
   const sunTex = canvasTexture(128, 128, (g) => {
     const grad = g.createRadialGradient(64, 64, 4, 64, 64, 62);
-    grad.addColorStop(0, 'rgba(255,176,64,1)');
-    grad.addColorStop(0.5, 'rgba(255,128,40,1)');
-    grad.addColorStop(0.6, 'rgba(255,100,32,1)');
-    grad.addColorStop(0.66, 'rgba(255,90,30,0.95)');
-    grad.addColorStop(0.7, 'rgba(255,110,40,0)');
-    grad.addColorStop(1, 'rgba(255,110,40,0)');
+    grad.addColorStop(0, 'rgba(255,150,36,1)');
+    grad.addColorStop(0.5, 'rgba(255,118,28,1)');
+    grad.addColorStop(0.6, 'rgba(255,96,22,1)');
+    grad.addColorStop(0.66, 'rgba(255,88,20,0.95)');
+    grad.addColorStop(0.7, 'rgba(255,100,30,0)');
+    grad.addColorStop(1, 'rgba(255,100,30,0)');
     g.fillStyle = grad;
     g.fillRect(0, 0, 128, 128);
   });
@@ -487,29 +490,49 @@ export function createWorld(scene, seed, assets) {
   );
   sunDisc.position.set(180, 75, -330);
   sunDisc.lookAt(180, 10, 60);
+  sunDisc.renderOrder = 4;
   scene.add(sunDisc);
   // v4: halo smaller + dimmer still (110 -> 95, opacity 0.25 -> 0.15) so
   // the warm disc keeps a crisp edge against the pink sky.
   // v7: halo follows the disc (r 95 -> 75).
+  // v8: halo back up (r 75 -> 85, opacity 0.15 -> 0.25 in
+  // applyTimeOfDay below) — rank 3's sun wears a visible golden halo,
+  // ours was a flat disc with no glow around it.
   const haloDisc = new THREE.Mesh(
-    new THREE.CircleGeometry(75, 32),
-    new THREE.MeshBasicMaterial({ map: sunTex, transparent: true, opacity: 0.15, depthWrite: false, fog: false }),
+    new THREE.CircleGeometry(85, 32),
+    new THREE.MeshBasicMaterial({ map: sunTex, transparent: true, opacity: 0.25, depthWrite: false, fog: false }),
   );
   haloDisc.position.set(180, 75, -330);
   haloDisc.lookAt(180, 10, 60);
+  haloDisc.renderOrder = 3;
   scene.add(haloDisc);
   // v5: a soft haze disc behind the sun so the disc sits in glowing air
   // instead of pasted on the sky (LOCAL-JUDGE-v4 C3). Round 2: radius
   // 150 -> 110 and opacity 0.14 -> 0.10 — the big disc washed half the
   // sky pale in round 1; haze hugs the sun now, it does not own the sky.
   // v7: haze follows the disc (r 110 -> 90).
+  // v8 (LOCAL-JUDGE-v7 C3, rank-3 decider b): the haze must actually be
+  // FELT — v7's r90/0.10 was invisible against the photo sky. Haze now
+  // r 150 at 0.20 in deep gold, plus a far r 230 wash at 0.07 so the
+  // golden hour wraps the whole horizon around the sun instead of a
+  // flat purple-magenta disc. renderOrder pins the stack: far haze,
+  // near haze, halo, disc — no z-fighting sort surprises.
   const hazeDisc = new THREE.Mesh(
-    new THREE.CircleGeometry(90, 32),
-    new THREE.MeshBasicMaterial({ color: 0xffb38a, transparent: true, opacity: 0.1, depthWrite: false, fog: false }),
+    new THREE.CircleGeometry(150, 32),
+    new THREE.MeshBasicMaterial({ color: 0xffc27a, transparent: true, opacity: 0.2, depthWrite: false, fog: false }),
   );
   hazeDisc.position.set(180, 75, -330);
   hazeDisc.lookAt(180, 10, 60);
+  hazeDisc.renderOrder = 2;
   scene.add(hazeDisc);
+  const hazeFar = new THREE.Mesh(
+    new THREE.CircleGeometry(230, 32),
+    new THREE.MeshBasicMaterial({ color: 0xffb070, transparent: true, opacity: 0.07, depthWrite: false, fog: false }),
+  );
+  hazeFar.position.set(180, 75, -330);
+  hazeFar.lookAt(180, 10, 60);
+  hazeFar.renderOrder = 1;
+  scene.add(hazeFar);
   animated.sunSprite = sunDisc;
 
   // Clouds: flattened mesh puffs (same reason as the sun — meshes render,
@@ -528,11 +551,14 @@ export function createWorld(scene, seed, assets) {
   // material at 0.35 (the 0.65 cloud material blew out to white cotton),
   // smaller and tighter to the disc.
   // v7: cluster follows the disc to the road axis (was 60, 92).
-  const puffMat = new THREE.MeshBasicMaterial({ color: 0xffc9a0, transparent: true, opacity: 0.35, fog: false });
-  for (let i = 0; i < 5; i += 1) {
+  // v8: 5 -> 9 puffs, deeper gold (0xffb070), opacity 0.35 -> 0.42,
+  // tighter to the disc (x ±60) — the haze band around the sun should
+  // read as glowing air at contact-sheet scale, not five faint smudges.
+  const puffMat = new THREE.MeshBasicMaterial({ color: 0xffb070, transparent: true, opacity: 0.42, fog: false });
+  for (let i = 0; i < 9; i += 1) {
     const puff = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 8), puffMat);
     puff.scale.set(range(rng, 22, 40), range(rng, 3, 6), range(rng, 8, 14));
-    puff.position.set(180 + range(rng, -70, 70), range(rng, 65, 95), -330 + range(rng, -20, 20));
+    puff.position.set(180 + range(rng, -60, 60), range(rng, 62, 95), -330 + range(rng, -15, 15));
     scene.add(puff);
     animated.clouds.push(puff);
   }
@@ -1023,7 +1049,7 @@ export function createWorld(scene, seed, assets) {
     const lampScale = p.lamp;
     for (const lm of lampMats) lm.color.setHex(0xffe9a0).multiplyScalar(Math.min(1.6, lampScale));
     sunDisc.material.opacity = phase === 'night' ? 0.15 : 1;
-    haloDisc.material.opacity = phase === 'night' ? 0.05 : 0.15; // v4: dimmer halo
+    haloDisc.material.opacity = phase === 'night' ? 0.05 : 0.25; // v8: 0.15 -> 0.25, golden halo must read
     return phase;
   }
   applyTimeOfDay(18 * 60 + 52);

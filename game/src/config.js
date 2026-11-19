@@ -102,8 +102,8 @@ export const PALETTE = {
   fog: 0xf2a06b,
   sun: 0xff8a3e, // v4: warm orange sun (was pale yellow-white 0xffc27a)
   sunLight: 0xffb36b,
-  hemiSky: 0xffb8c6,
-  hemiGround: 0x5a4a7a,
+  hemiSky: 0xffc2a0, // v8: warmer sky fill (was pink 0xffb8c6) — golden hour, not magenta hour
+  hemiGround: 0x6a4a5a,
   ocean: 0x2e6f8e,
   sand: 0xe8c98f,
   asphalt: 0x23262e,

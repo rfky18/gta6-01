@@ -80,7 +80,14 @@ export function stageShot(game, name) {
     g.police.placeUnit2(g.car.state.x + 4, g.car.state.z - 34, Math.PI, 28);
     g.police.placeUnit3(g.car.state.x + 4, g.car.state.z - 56, Math.PI, 26);
     g.police.placeUnit4(g.car.state.x - 5, g.car.state.z - 74, Math.PI, 26);
-    g.police.placeHeli(g.car.state.x - 16, g.car.state.z - 62, 22);
+    // v8: HAWK-1 hangs over the road ahead so its spotlight cone lands
+    // on the street by the pursuit — rank 3 shows the beam hitting the
+    // road by the cruiser, not a distant dot.
+    // v8 R2 (dream-loop R1): 34 m ahead at y 20 put the heli at ~24 deg
+    // elevation — near the top edge, half-cut, beam out of frame. 48 m
+    // ahead at y 19 drops it to ~17 deg, upper-centre and fully in
+    // frame, beam pool on the road by VIPER-9.
+    g.police.placeHeli(g.car.state.x - 8, g.car.state.z - 48, 19);
     // Three-quarter rear view, like the reference: swing the chase cam
     // to the side so the Solaris reads as a car, not a flat box, and drop
     // the pitch so the camera sees the rear + flank instead of the roof
@@ -92,7 +99,22 @@ export function stageShot(game, name) {
     // v4: yaw offset stays 0.38 (v3) — swinging it to 0.46 pushed the
     // ferris wheel out of the frame (C1 breadth loss, not worth it for a
     // headlight edge the rear camera barely sees anyway).
-    g.render.coverFraming(0.38, 76);
+    // v8 (LOCAL-JUDGE-v7 C3, rank-3 decider a): yaw 0.38 -> 0.58 — a real
+    // three-quarter angle: the Solaris shows its left flank, wheels and
+    // low-wide wedge instead of a dead-rear box, like rank 3's cover.
+    // The v4 wheel trap is fixed the other way: aimX pans the lookAt
+    // toward the beach, so the ferris wheel stays in frame at the wider
+    // swing, and FOV 76 -> 78 buys back the margin. Distance stays 6.5 m
+    // (v6 R1: 5.6 m cropped the speedometer — never again).
+    // v8 R2 (dream-loop R1): aimX 7 was far too much — at a 7 m lookAt
+    // distance it swung the view ~45 deg and pushed the hero car out of
+    // the frame left. aimX 1.5 keeps the car left-of-centre (rank 3's
+    // car sits left too) with the wheel still inside the right edge.
+    // v8 R3 (dream-loop R2): aimX 1.5 -> 2.0 — R2 left only a sliver of
+    // the ferris wheel at the right edge (thinner than v7); +0.5 buys
+    // ~50 px of wheel back while the car stays left-of-centre and the
+    // sun stays clear of the tower at its left edge.
+    g.render.coverFraming(0.58, 78, 2.0);
     g.render.cam.pitch = 0.15;
     // v6 R2: camera stays at the v5 6.5 m — the R1 pull-in to 5.6 m
     // cropped the speedometer and pushed the ferris wheel out of frame.
