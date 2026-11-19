@@ -17,8 +17,22 @@ function buildCharacterMesh() {
   legL.position.set(-0.16, 0.4, 0);
   const legR = legL.clone();
   legR.position.x = 0.16;
+  // v6: shoes + belt + gold chest stripe so Dario reads as a dressed
+  // character from behind in the end shot, not a teal box (LOCAL-JUDGE-v5).
+  const shoeMat = new THREE.MeshLambertMaterial({ color: 0xf2f2ee });
+  for (const sx of [-0.16, 0.16]) {
+    const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.12, 0.44), shoeMat);
+    shoe.position.set(sx, 0.06, 0.06);
+    group.add(shoe);
+  }
+  const belt = new THREE.Mesh(new THREE.BoxGeometry(0.74, 0.1, 0.42), new THREE.MeshLambertMaterial({ color: 0x14161c }));
+  belt.position.y = 0.82;
+  group.add(belt);
   const torso = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.75, 0.4), jacket);
   torso.position.y = 1.18;
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.74, 0.12, 0.42), new THREE.MeshLambertMaterial({ color: 0xffd23e }));
+  stripe.position.y = 1.42;
+  group.add(stripe);
   const armL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.7, 0.24), jacket);
   armL.position.set(-0.48, 1.18, 0);
   const armR = armL.clone();
@@ -27,6 +41,10 @@ function buildCharacterMesh() {
   head.position.y = 1.78;
   const hat = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.12, 0.48), cap);
   hat.position.y = 2.02;
+  // v6: cap brim so the head reads as a capped head from behind.
+  const brim = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.05, 0.24), cap);
+  brim.position.set(0, 1.98, 0.3);
+  group.add(brim);
   // The gun: a dark box in the right hand, shown only while armed.
   const gun = new THREE.Mesh(
     new THREE.BoxGeometry(0.12, 0.16, 0.62),

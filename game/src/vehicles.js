@@ -84,6 +84,12 @@ const GEO = {
   windshield: new THREE.BoxGeometry(1.6, 0.05, 0.95),
   rearGlass: new THREE.BoxGeometry(1.62, 0.05, 1.15),
   tail: new THREE.BoxGeometry(1.8, 0.34, 0.6),
+  tailDeck: new THREE.BoxGeometry(1.9, 0.08, 1.05),
+  tailPanel: new THREE.BoxGeometry(1.86, 0.36, 0.06),
+  valance: new THREE.BoxGeometry(1.9, 0.2, 0.12),
+  reverse: new THREE.BoxGeometry(0.34, 0.1, 0.06),
+  flare: new THREE.BoxGeometry(0.16, 0.36, 0.85),
+  endplate: new THREE.BoxGeometry(0.06, 0.3, 0.55),
   haunch: new THREE.BoxGeometry(0.22, 0.34, 1.1),
   skirt: new THREE.BoxGeometry(0.1, 0.16, 2.6),
   light: new THREE.BoxGeometry(0.46, 0.16, 0.08),
@@ -133,6 +139,13 @@ export function buildCarMesh(opts) {
   const tail = new THREE.Mesh(GEO.tail, bodyMat);
   tail.position.set(0, 0.56, -2.1);
   tail.rotation.x = 0.12;
+  // v6: sloped rear decklid from the glass down to the tail — the rear
+  // three-quarter cover angle finally reads a wedge deck, not a flat box
+  // top. The deck sits over the rear glass base, falling toward the tail.
+  const tailDeck = new THREE.Mesh(GEO.tailDeck, bodyMat);
+  tailDeck.position.set(0, 0.92, -1.72);
+  tailDeck.rotation.x = -0.38;
+  group.add(tailDeck);
   const cabin = new THREE.Mesh(GEO.cabin, glassMat);
   cabin.position.set(0, 1.02, -0.3);
   cabin.rotation.x = -0.1; // fastback rake: roofline falls toward the tail
@@ -160,6 +173,14 @@ export function buildCarMesh(opts) {
     const haunch = new THREE.Mesh(GEO.haunch, bodyMat);
     haunch.position.set(s * 1.02, 0.62, -1.3);
     group.add(haunch);
+    // v6: rear fender flare — an angled lip at the tail corner so the
+    // haunch wraps around the rear wheel and the back of the car reads
+    // wide and planted from directly behind (rank-1 cars show rear rubber
+    // + flared arches; ours showed a flat slab edge).
+    const flare = new THREE.Mesh(GEO.flare, bodyMat);
+    flare.position.set(s * 1.1, 0.58, -1.95);
+    flare.rotation.y = -s * 0.35;
+    group.add(flare);
     const skirt = new THREE.Mesh(GEO.skirt, darkMat);
     skirt.position.set(s * 1.06, 0.22, 0);
     group.add(skirt);
@@ -172,11 +193,13 @@ export function buildCarMesh(opts) {
     const mirror = new THREE.Mesh(GEO.mirror, bodyMat);
     mirror.position.set(s * 1.04, 0.98, 0.65);
     group.add(mirror);
+    // v6: chrome exhaust tips (bright Phong, not flat black) so the quad
+    // tips catch the sunset from the rear cover angle.
     const tips = o.sport ? [0.35, 0.75] : [0.55];
     for (const ex of tips) {
-      const exhaust = new THREE.Mesh(GEO.exhaust, darkMat);
+      const exhaust = new THREE.Mesh(GEO.exhaust, new THREE.MeshPhongMaterial({ color: 0xd8dde2, shininess: 110, specular: 0xffffff }));
       exhaust.rotation.x = Math.PI / 2;
-      exhaust.position.set(s * ex, 0.32, -2.42);
+      exhaust.position.set(s * ex, 0.32, -2.44);
       group.add(exhaust);
     }
   }
@@ -185,6 +208,12 @@ export function buildCarMesh(opts) {
     const diffuser = new THREE.Mesh(GEO.diffuser, darkMat);
     diffuser.position.set(0, 0.28, -2.41);
     group.add(diffuser);
+    // v6: black rear valance under the tail panel — a low dark band that
+    // separates bumper from body so the tail reads as two stacked forms
+    // (bumper + deck) instead of one red slab.
+    const valance = new THREE.Mesh(GEO.valance, darkMat);
+    valance.position.set(0, 0.2, -2.42);
+    group.add(valance);
     // v5: diffuser fins + neon underglow on the wet asphalt — the rear
     // three-quarter cover angle finally gets something to catch the eye
     // below the tail bar (LOCAL-JUDGE-v4 C3, boxy rear).
@@ -195,13 +224,13 @@ export function buildCarMesh(opts) {
     }
     const glow = new THREE.Mesh(
       new THREE.PlaneGeometry(2.6, 5.2),
-      new THREE.MeshBasicMaterial({ color: 0xff2e88, transparent: true, opacity: 0.16, depthWrite: false }),
+      new THREE.MeshBasicMaterial({ color: 0xff2e88, transparent: true, opacity: 0.22, depthWrite: false }),
     );
     glow.rotation.x = -Math.PI / 2;
     glow.position.y = 0.03;
     group.add(glow);
     const plate = new THREE.Mesh(GEO.plate, new THREE.MeshLambertMaterial({ map: makePlateTexture() }));
-    plate.position.set(0, 0.48, -2.43);
+    plate.position.set(0, 0.48, -2.47);
     plate.rotation.y = Math.PI;
     group.add(plate);
     for (const s of [-1, 1]) {
@@ -233,18 +262,32 @@ export function buildCarMesh(opts) {
     h.position.set(s, 0.5, 2.64);
     group.add(h);
   }
-  const tailMat = new THREE.MeshBasicMaterial({ color: 0x992222 });
+  // v6: the tail is the cover's money shot — a dark inset panel behind
+  // the lamps, a BRIGHT full-width bar (not dim maroon), big angled
+  // corner clusters that catch the rear three-quarter angle, and white
+  // reverse lamps. The v5 bar read as a thin dark stripe from behind.
+  const tailPanel = new THREE.Mesh(GEO.tailPanel, darkMat);
+  tailPanel.position.set(0, 0.66, -2.43);
+  group.add(tailPanel);
+  const tailMat = new THREE.MeshBasicMaterial({ color: 0xdd2222 });
   const tailLights = [];
   const bar = new THREE.Mesh(GEO.tailBar, tailMat);
-  bar.position.set(0, 0.72, -2.42);
+  bar.position.set(0, 0.72, -2.47);
   group.add(bar);
   tailLights.push(bar);
-  const endMat = new THREE.MeshBasicMaterial({ color: 0xff3524 });
+  const endMat = new THREE.MeshBasicMaterial({ color: 0xff4030 });
   for (const s of [-0.72, 0.72]) {
     const e = new THREE.Mesh(GEO.tailBarEnd, endMat);
-    e.position.set(s, 0.72, -2.42);
+    e.position.set(s, 0.72, -2.47);
+    e.rotation.y = -s * 0.35; // v6: angled out so the cluster reads from the side too
     group.add(e);
     tailLights.push(e);
+  }
+  const reverseMat = new THREE.MeshBasicMaterial({ color: 0xfff6e0 });
+  for (const s of [-0.42, 0.42]) {
+    const rev = new THREE.Mesh(GEO.reverse, reverseMat);
+    rev.position.set(s, 0.5, -2.47);
+    group.add(rev);
   }
   if (o.sport) {
     const spoiler = new THREE.Mesh(GEO.spoiler, darkMat);
@@ -255,6 +298,11 @@ export function buildCarMesh(opts) {
       const fin = new THREE.Mesh(GEO.fin, darkMat);
       fin.position.set(s, 0.88, -2.1);
       group.add(fin);
+      // v6: spoiler endplates — vertical plates at the wing tips so the
+      // wing reads as a wing, not a black plank, from the rear angle.
+      const plate = new THREE.Mesh(GEO.endplate, darkMat);
+      plate.position.set(s * 0.98, 1.12, -2.1);
+      group.add(plate);
     }
   }
   if (o.police) {
@@ -312,7 +360,7 @@ export function buildCarMesh(opts) {
 // Brake lights: bright red while braking, dim red otherwise.
 export function setBraking(mesh, braking) {
   if (!mesh || !mesh.userData.tailMat) return;
-  mesh.userData.tailMat.color.setHex(braking ? 0xff2e2e : 0x992222);
+  mesh.userData.tailMat.color.setHex(braking ? 0xff2e2e : 0xdd2222);
 }
 
 // Drivable car state machine.

@@ -82,24 +82,48 @@ export function stageShot(game, name) {
     // headlight edge the rear camera barely sees anyway).
     g.render.coverFraming(0.38, 76);
     g.render.cam.pitch = 0.15;
+    // v6 R2: camera stays at the v5 6.5 m — the R1 pull-in to 5.6 m
+    // cropped the speedometer and pushed the ferris wheel out of frame.
+    // The sculpted rear carries the cover at 6.5 m now.
     return 'play';
   }
   if (name === 'end') {
-    // The Final Deal complete: Dario on foot at Nadia's garage, cash home.
-    // v3: REP 5 (SAN VEGA LEGEND) — the end shot shows the finished arc,
-    // not a fresh REP 0.
+    // v6 RE-STAGE (LOCAL-JUDGE-v5: the v5 end shot was the weakest frame —
+    // Dario on a melting road at the garage, flat magenta sky block, teal
+    // streak band down the middle). Now: Dario walks down the x=60 avenue
+    // into the sunset — the low sun sits in the road gap ahead (the x=0
+    // try hid it behind downtown towers), crisp 3D lane dashes + zebra
+    // underfoot, palms and towers flanking. Same story beat (Final Deal
+    // complete, REP 5), new staging: the walk into the sunset, not a
+    // garage yard. Player at z=116 so the Neon Mile benches stay behind
+    // the camera instead of looming across the bottom of the frame.
     g.missions.setState(7, 2, true);
     g.state.money = 6950;
     g.state.rep = 5;
     g.setWanted(0);
     g.state.clockMinutes = 19 * 60 + 24;
-    g.player.place(-150, 122, -Math.PI / 2);
+    g.player.place(56, 116, 0);
     g.state.driving = false;
     g.player.mesh.visible = true;
+    g.player.lookAt(56, -40);
+    // Park all traffic on the far west road: an R2 gold traffic car
+    // happened to sit right in front of the camera and its roof filled
+    // the bottom-right corner of the frame. The end shot is a quiet
+    // walk, not a busy street — the two walkers carry the life.
+    g.traffic.placeAhead(-180, 0, Math.PI, [
+      { lane: -1.5, ahead: -100 }, { lane: 1.5, ahead: -82 }, { lane: -1.5, ahead: -64 },
+      { lane: 1.5, ahead: -46 }, { lane: -1.5, ahead: -28 }, { lane: 1.5, ahead: -10 },
+      { lane: -1.5, ahead: 8 }, { lane: 1.5, ahead: 26 }, { lane: -1.5, ahead: 44 },
+      { lane: 1.5, ahead: 62 }, { lane: -1.5, ahead: 80 }, { lane: 1.5, ahead: 98 },
+    ]);
+    // Two walkers ahead on the sidewalks of the x=60 avenue.
+    g.pedestrians.placeSidewalk(56, 116, [
+      { side: -1, ahead: -18 },
+      { side: 1, ahead: -30 },
+    ]);
     g.hud.say('Nadia Cruz', 'Two thousand, and the whole city saw you walk out of Ferro’s warehouse. San Vega is yours now, Dario.', 30);
     g.hud.banner('Mission complete: The Final Deal, +$2,000', 30);
-    g.render.snapBehind(-Math.PI / 2, { x: -150, y: 0, z: 122 }, false);
-    g.render.cam.yaw = Math.PI / 2;
+    g.render.snapBehind(g.player.state.heading, { x: 56, y: 0, z: 116 }, false);
     return 'play';
   }
   if (name === 'combat') {
